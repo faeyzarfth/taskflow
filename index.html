@@ -348,9 +348,215 @@
         .sidebar-active { background-color: #f1f5f9; color: #475569; border-right: 3px solid #64748b; }
         .assignment-card { transition: all 0.3s ease; }
         .assignment-card:hover { transform: translateY(-2px); }
+        
+        /* Notification Styles */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .notification {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            margin-bottom: 12px;
+            padding: 16px 20px;
+            border-left: 4px solid;
+            animation: slideInRight 0.4s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .notification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        .notification.success {
+            border-left-color: #10b981;
+            background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
+        }
+        
+        .notification.error {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+        }
+        
+        .notification.warning {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+        }
+        
+        .notification.info {
+            border-left-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+        }
+        
+        .notification-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .notification-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 12px;
+        }
+        
+        .notification.success .notification-icon {
+            background: #10b981;
+            color: white;
+        }
+        
+        .notification.error .notification-icon {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .notification.warning .notification-icon {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .notification.info .notification-icon {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1f2937;
+            flex: 1;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .notification-close:hover {
+            background: rgba(0,0,0,0.1);
+            color: #6b7280;
+        }
+        
+        .notification-message {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.4;
+            margin-left: 36px;
+        }
+        
+        .notification-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 0 0 12px 12px;
+            animation: progress 5s linear;
+        }
+        
+        .notification.success .notification-progress {
+            background: #10b981;
+        }
+        
+        .notification.error .notification-progress {
+            background: #ef4444;
+        }
+        
+        .notification.warning .notification-progress {
+            background: #f59e0b;
+        }
+        
+        .notification.info .notification-progress {
+            background: #3b82f6;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes progress {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+        
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        .notification.removing {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
+        
+        @media (max-width: 640px) {
+            .notification-container {
+                left: 20px;
+                right: 20px;
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+    
     <!-- Loading Screen -->
     <div id="loadingScreen" class="min-h-screen gradient-bg flex items-center justify-center">
         <div class="text-center text-white">
@@ -1116,6 +1322,77 @@
         let allUsers = [];
         let allSubmissions = {};
         let currentAssignmentId = null;
+        let notificationId = 0;
+
+        // Notification System
+        function showNotification(title, message, type = 'info', duration = 5000) {
+            const container = document.getElementById('notificationContainer');
+            const id = ++notificationId;
+            
+            const icons = {
+                success: 'fas fa-check',
+                error: 'fas fa-times',
+                warning: 'fas fa-exclamation-triangle',
+                info: 'fas fa-info'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.id = `notification-${id}`;
+            
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <div class="notification-icon">
+                        <i class="${icons[type]}"></i>
+                    </div>
+                    <div class="notification-title">${title}</div>
+                    <button class="notification-close" onclick="closeNotification(${id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                ${message ? `<div class="notification-message">${message}</div>` : ''}
+                <div class="notification-progress"></div>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto remove after duration
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeNotification(id);
+                }, duration);
+            }
+            
+            return id;
+        }
+        
+        function closeNotification(id) {
+            const notification = document.getElementById(`notification-${id}`);
+            if (notification) {
+                notification.classList.add('removing');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }
+        
+        function showSuccessNotification(title, message, duration = 4000) {
+            return showNotification(title, message, 'success', duration);
+        }
+        
+        function showErrorNotification(title, message, duration = 6000) {
+            return showNotification(title, message, 'error', duration);
+        }
+        
+        function showWarningNotification(title, message, duration = 5000) {
+            return showNotification(title, message, 'warning', duration);
+        }
+        
+        function showInfoNotification(title, message, duration = 4000) {
+            return showNotification(title, message, 'info', duration);
+        }
 
         // Initialize app when Firebase is ready
         window.initializeApp = function() {
@@ -1278,9 +1555,10 @@
                 if (user) {
                     currentUser = user;
                     showStudentDashboard();
+                    showSuccessNotification('Login Berhasil!', `Selamat datang, ${user.fullName}!`);
                     console.log('🎉 Student login successful!');
                 } else {
-                    alert('Username atau password salah!');
+                    showErrorNotification('Login Gagal', 'Username atau password salah!');
                 }
                 
             } catch (error) {
@@ -1315,10 +1593,11 @@
                 if (user) {
                     currentUser = user;
                     showAdminDashboard();
+                    showSuccessNotification('Login Admin Berhasil!', `Selamat datang, ${user.fullName}!`);
                     console.log('🎉 Admin login successful!');
                 } else {
                     console.log('Admin login failed - user not found');
-                    alert('Username atau password admin salah!');
+                    showErrorNotification('Login Gagal', 'Username atau password admin salah!');
                 }
                 
             } catch (error) {
@@ -1347,23 +1626,23 @@
                 const confirmPassword = document.getElementById('registerConfirmPassword').value;
                 
                 if (!fullName || !username || !userClass || !password || !confirmPassword) {
-                    alert('Semua field harus diisi!');
+                    showWarningNotification('Data Tidak Lengkap', 'Semua field harus diisi!');
                     return;
                 }
                 
                 if (password !== confirmPassword) {
-                    alert('Password dan konfirmasi password tidak sama!');
+                    showErrorNotification('Password Tidak Cocok', 'Password dan konfirmasi password tidak sama!');
                     return;
                 }
                 
                 if (password.length < 6) {
-                    alert('Password minimal 6 karakter!');
+                    showWarningNotification('Password Terlalu Pendek', 'Password minimal 6 karakter!');
                     return;
                 }
                 
                 // Check if username already exists
                 if (allUsers.find(u => u.username === username)) {
-                    alert('Username sudah digunakan! Pilih username lain.');
+                    showErrorNotification('Username Sudah Digunakan', 'Pilih username lain yang unik!');
                     return;
                 }
                 
@@ -1390,12 +1669,12 @@
                 // Update local data
                 allUsers.push(newUser);
                 
-                alert(`Akun berhasil dibuat! Selamat datang, ${fullName}!`);
+                showSuccessNotification('Registrasi Berhasil!', `Akun ${fullName} telah dibuat. Silakan login!`);
                 showLoginForm();
                 
             } catch (error) {
                 console.error('Registration error:', error);
-                alert('Gagal membuat akun. Silakan coba lagi.');
+                showErrorNotification('Registrasi Gagal', 'Terjadi kesalahan. Silakan coba lagi.');
             } finally {
                 registerBtn.innerHTML = originalText;
                 registerBtn.disabled = false;
@@ -1897,23 +2176,23 @@
                 if (type === 'text') {
                     content = document.getElementById('submissionText').value.trim();
                     if (!content) {
-                        alert('Jawaban tidak boleh kosong!');
+                        showWarningNotification('Jawaban Kosong', 'Jawaban tidak boleh kosong!');
                         return;
                     }
                 } else if (type === 'link') {
                     content = document.getElementById('submissionLink').value.trim();
                     if (!content) {
-                        alert('Link tidak boleh kosong!');
+                        showWarningNotification('Link Kosong', 'Link tidak boleh kosong!');
                         return;
                     }
                 } else if (type === 'file') {
                     content = document.getElementById('submissionFileName').value.trim();
                     if (!content) {
-                        alert('Nama file tidak boleh kosong!');
+                        showWarningNotification('Nama File Kosong', 'Nama file tidak boleh kosong!');
                         return;
                     }
                 } else {
-                    alert('Pilih jenis pengumpulan!');
+                    showWarningNotification('Jenis Pengumpulan', 'Pilih jenis pengumpulan terlebih dahulu!');
                     return;
                 }
                 
@@ -1944,11 +2223,12 @@
                 closeSubmitAssignmentModal();
                 loadStudentDashboard();
                 
-                alert('Tugas berhasil dikumpulkan!');
+                const assignment = allAssignments.find(a => a.id === currentAssignmentId);
+                showSuccessNotification('Tugas Dikumpulkan!', `Tugas "${assignment.title}" berhasil dikumpulkan.`);
                 
             } catch (error) {
                 console.error('Submit assignment error:', error);
-                alert('Gagal mengumpulkan tugas. Silakan coba lagi.');
+                showErrorNotification('Pengumpulan Gagal', 'Gagal mengumpulkan tugas. Silakan coba lagi.');
             } finally {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
@@ -1986,7 +2266,7 @@
                 const dueDate = document.getElementById('assignmentDueDate').value;
                 
                 if (!title || !subject || !targetClass || !description || !dueDate) {
-                    alert('Semua field harus diisi!');
+                    showWarningNotification('Data Tidak Lengkap', 'Semua field harus diisi!');
                     return;
                 }
                 
@@ -2019,11 +2299,11 @@
                 loadAdminAssignments();
                 loadAdminDashboard();
                 
-                alert(`Tugas "${title}" berhasil dibuat!`);
+                showSuccessNotification('Tugas Dibuat!', `Tugas "${title}" untuk kelas ${targetClass} berhasil dibuat.`);
                 
             } catch (error) {
                 console.error('Create assignment error:', error);
-                alert('Gagal membuat tugas. Silakan coba lagi.');
+                showErrorNotification('Gagal Membuat Tugas', 'Terjadi kesalahan. Silakan coba lagi.');
             } finally {
                 createBtn.innerHTML = originalText;
                 createBtn.disabled = false;
@@ -2031,7 +2311,8 @@
         });
 
         function deleteAssignment(assignmentId) {
-            if (confirm('Yakin ingin menghapus tugas ini? Semua pengumpulan terkait akan ikut terhapus.')) {
+            const assignment = allAssignments.find(a => a.id === assignmentId);
+            if (confirm(`Yakin ingin menghapus tugas "${assignment.title}"? Semua pengumpulan terkait akan ikut terhapus.`)) {
                 // Remove from Firebase if connected
                 if (window.firebaseDB && connectionStatus === 'connected') {
                     try {
@@ -2056,7 +2337,7 @@
                 loadAdminAssignments();
                 loadAdminDashboard();
                 
-                alert('Tugas berhasil dihapus!');
+                showSuccessNotification('Tugas Dihapus!', `Tugas "${assignment.title}" berhasil dihapus.`);
             }
         }
 
@@ -2252,5 +2533,5 @@
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9842020ff290252c',t:'MTc1ODcxNDAzOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9842063cb216252c',t:'MTc1ODcxNDIwOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
