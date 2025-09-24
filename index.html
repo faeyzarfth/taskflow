@@ -35,6 +35,7 @@
             
             const indicators = document.querySelectorAll('.connection-status');
             const iconIndicators = document.querySelectorAll('.connection-status-icon');
+            const dbStatusElement = document.getElementById('dbStatusText');
             
             indicators.forEach(indicator => {
                 switch(status) {
@@ -69,6 +70,28 @@
                         break;
                 }
             });
+            
+            // Update database status
+            if (dbStatusElement) {
+                switch(status) {
+                    case 'connected':
+                        dbStatusElement.innerHTML = '✅ Database Firebase terhubung - Semua fitur aktif';
+                        dbStatusElement.className = 'text-green-600';
+                        break;
+                    case 'connecting':
+                        dbStatusElement.innerHTML = '🔄 Menghubungkan ke database Firebase...';
+                        dbStatusElement.className = 'text-yellow-600';
+                        break;
+                    case 'offline':
+                        dbStatusElement.innerHTML = '⚠️ Database offline - Aplikasi tidak dapat berfungsi';
+                        dbStatusElement.className = 'text-orange-600';
+                        break;
+                    case 'error':
+                        dbStatusElement.innerHTML = '❌ Gagal terhubung ke database - Aplikasi tidak dapat berfungsi';
+                        dbStatusElement.className = 'text-red-600';
+                        break;
+                }
+            }
         }
         
         // Initialize Firebase with retry mechanism
@@ -116,10 +139,10 @@
                 
                 // Test connection with timeout
                 const connectionTimeout = setTimeout(() => {
-                    console.log('⚠️ Firebase connection timeout, switching to offline mode');
-                    updateConnectionStatus('offline');
-                    window.initializeApp();
-                }, 5000);
+                    console.log('❌ Firebase connection timeout - Database required!');
+                    updateConnectionStatus('error');
+                    showErrorNotification('Koneksi Database Gagal', 'Tidak dapat terhubung ke database. Aplikasi memerlukan koneksi database untuk berfungsi.');
+                }, 10000);
                 
                 const testRef = ref(database, '.info/connected');
                 onValue(testRef, (snapshot) => {
@@ -129,17 +152,19 @@
                         console.log('✅ Firebase connected successfully');
                         retryCount = 0;
                         
-                        // Load existing data when connected
-                        loadExistingData();
-                        
-                        // Initialize the app if not already done
-                        if (document.getElementById('loadingScreen').classList.contains('hidden') === false) {
-                            window.initializeApp();
-                        }
+                        // Initialize demo data if needed, then load existing data
+                        initializeDemoDataIfNeeded().then(() => {
+                            loadExistingData();
+                            
+                            // Initialize the app if not already done
+                            if (document.getElementById('loadingScreen').classList.contains('hidden') === false) {
+                                window.initializeApp();
+                            }
+                        });
                     } else {
-                        updateConnectionStatus('offline');
-                        console.log('⚠️ Firebase disconnected');
-                        window.initializeApp();
+                        updateConnectionStatus('error');
+                        console.log('❌ Firebase disconnected - Database required!');
+                        showErrorNotification('Database Terputus', 'Koneksi ke database terputus. Aplikasi memerlukan koneksi database.');
                     }
                 });
                 
@@ -150,21 +175,67 @@
                 if (retryCount < maxRetries) {
                     retryCount++;
                     console.log(`🔄 Retrying Firebase connection (${retryCount}/${maxRetries})...`);
-                    setTimeout(initializeFirebase, 2000 * retryCount);
+                    setTimeout(initializeFirebase, 3000 * retryCount);
                 } else {
-                    console.log('🔴 Max retries reached, switching to offline mode');
-                    updateConnectionStatus('offline');
-                    window.initializeApp();
+                    console.log('🔴 Max retries reached - Database connection failed!');
+                    updateConnectionStatus('error');
+                    showErrorNotification('Koneksi Database Gagal', 'Tidak dapat terhubung ke database setelah beberapa percobaan. Silakan refresh halaman.');
                 }
+            }
+        }
+        
+        // Initialize demo data if database is empty
+        async function initializeDemoDataIfNeeded() {
+            if (!window.firebaseDB || connectionStatus !== 'connected') {
+                throw new Error('Database connection required');
+            }
+            
+            try {
+                const { database, ref, get } = window.firebaseDB;
+                
+                // Check if users exist
+                const usersSnapshot = await get(ref(database, 'users'));
+                if (!usersSnapshot.exists()) {
+                    console.log('🔄 Initializing demo users in database...');
+                    await initializeDemoUsers();
+                }
+                
+                // Check if assignments exist
+                const assignmentsSnapshot = await get(ref(database, 'assignments'));
+                if (!assignmentsSnapshot.exists()) {
+                    console.log('🔄 Initializing demo assignments in database...');
+                    await initializeDemoAssignments();
+                }
+                
+                console.log('✅ Demo data initialization complete');
+                
+            } catch (error) {
+                console.error('Error initializing demo data:', error);
+                throw error;
             }
         }
         
         // Load existing data from Firebase
         async function loadExistingData() {
-            if (!window.firebaseDB || (typeof connectionStatus !== 'undefined' && connectionStatus !== 'connected')) return;
+            if (!window.firebaseDB || connectionStatus !== 'connected') {
+                throw new Error('Database connection required');
+            }
             
             try {
                 const { database, ref, get } = window.firebaseDB;
+                
+                // Load users (required for login)
+                const usersSnapshot = await get(ref(database, 'users'));
+                if (usersSnapshot.exists()) {
+                    const usersData = usersSnapshot.val();
+                    allUsers = Object.entries(usersData).map(([key, value]) => ({
+                        username: key,
+                        ...value
+                    }));
+                    console.log(`👥 Loaded ${allUsers.length} users from Firebase`);
+                } else {
+                    throw new Error('No users found in database');
+                }
                 
                 // Load assignments
                 const assignmentsSnapshot = await get(ref(database, 'assignments'));
@@ -176,20 +247,8 @@
                     }));
                     console.log(`📚 Loaded ${allAssignments.length} assignments from Firebase`);
                 } else {
-                    await initializeDemoAssignments();
-                }
-                
-                // Load users
-                const usersSnapshot = await get(ref(database, 'users'));
-                if (usersSnapshot.exists()) {
-                    const usersData = usersSnapshot.val();
-                    allUsers = Object.entries(usersData).map(([key, value]) => ({
-                        username: key,
-                        ...value
-                    }));
-                    console.log(`👥 Loaded ${allUsers.length} users from Firebase`);
-                } else {
-                    await initializeDemoUsers();
+                    allAssignments = [];
+                    console.log('📚 No assignments found in database');
                 }
                 
                 // Load submissions
@@ -197,6 +256,9 @@
                 if (submissionsSnapshot.exists()) {
                     allSubmissions = submissionsSnapshot.val();
                     console.log(`📝 Loaded submissions from Firebase`);
+                } else {
+                    allSubmissions = {};
+                    console.log('📝 No submissions found in database');
                 }
                 
                 // Refresh UI based on current user
@@ -208,12 +270,15 @@
                 
             } catch (error) {
                 console.error('Error loading existing data:', error);
+                throw error;
             }
         }
         
         // Initialize demo data
         async function initializeDemoAssignments() {
-            if (!window.firebaseDB || (typeof connectionStatus !== 'undefined' && connectionStatus !== 'connected')) return;
+            if (!window.firebaseDB || connectionStatus !== 'connected') {
+                throw new Error('Database connection required');
+            }
             
             try {
                 const { database, ref, set } = window.firebaseDB;
@@ -246,20 +311,18 @@
                 };
                 
                 await set(ref(database, 'assignments'), demoAssignments);
-                allAssignments = Object.entries(demoAssignments).map(([key, value]) => ({
-                    id: key,
-                    ...value
-                }));
-                
                 console.log('✅ Demo assignments initialized in Firebase');
                 
             } catch (error) {
                 console.error('Error initializing demo assignments:', error);
+                throw error;
             }
         }
         
         async function initializeDemoUsers() {
-            if (!window.firebaseDB || (typeof connectionStatus !== 'undefined' && connectionStatus !== 'connected')) return;
+            if (!window.firebaseDB || connectionStatus !== 'connected') {
+                throw new Error('Database connection required');
+            }
             
             try {
                 const { database, ref, set } = window.firebaseDB;
@@ -306,15 +369,11 @@
                 };
                 
                 await set(ref(database, 'users'), demoUsers);
-                allUsers = Object.entries(demoUsers).map(([key, value]) => ({
-                    username: key,
-                    ...value
-                }));
-                
                 console.log('✅ Demo users initialized in Firebase');
                 
             } catch (error) {
                 console.error('Error initializing demo users:', error);
+                throw error;
             }
         }
         
@@ -580,6 +639,16 @@
                 <i class="fas fa-spinner fa-spin text-yellow-500 mr-1"></i>
                 <span class="text-yellow-600 text-sm">Menghubungkan...</span>
             </div>
+            
+            <!-- Database Status Info -->
+            <div class="mt-2">
+                <div id="databaseStatus" class="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm text-xs">
+                    <div class="text-gray-600">
+                        <i class="fas fa-database mr-1"></i>
+                        <span id="dbStatusText">Memeriksa koneksi database...</span>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <div class="container mx-auto px-4 py-8 h-screen flex items-center">
@@ -723,6 +792,16 @@
             <div class="connection-status bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm">
                 <i class="fas fa-spinner fa-spin text-yellow-500 mr-1"></i>
                 <span class="text-yellow-600 text-sm">Menghubungkan...</span>
+            </div>
+            
+            <!-- Database Status Info -->
+            <div class="mt-2">
+                <div id="databaseStatus" class="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm text-xs">
+                    <div class="text-gray-600">
+                        <i class="fas fa-database mr-1"></i>
+                        <span id="dbStatusText">Memeriksa koneksi database...</span>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -1404,126 +1483,31 @@
         // Initialize app when Firebase is ready
         window.initializeApp = function() {
             try {
-                firebaseReady = (typeof connectionStatus !== 'undefined' && connectionStatus === 'connected');
-                
-                // Load demo data as fallback
-                if (!firebaseReady || (typeof connectionStatus !== 'undefined' && connectionStatus === 'offline')) {
-                    console.log('🔄 Loading demo data as fallback...');
-                    loadDemoData();
+                if (connectionStatus !== 'connected') {
+                    console.log('❌ App cannot initialize without database connection');
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('loginScreen').classList.remove('hidden');
+                    showErrorNotification('Database Diperlukan', 'Aplikasi memerlukan koneksi database untuk berfungsi. Silakan refresh halaman.');
+                    return;
                 }
+                
+                firebaseReady = true;
                 
                 // Show login screen
                 document.getElementById('loadingScreen').classList.add('hidden');
                 document.getElementById('loginScreen').classList.remove('hidden');
                 
-                console.log('✅ App initialized successfully');
+                console.log('✅ App initialized successfully with database connection');
+                console.log('👥 Available users:', allUsers.map(u => ({ username: u.username, role: u.role })));
             } catch (error) {
                 console.error('App initialization error:', error);
-                // Force show login screen even if there's an error
                 document.getElementById('loadingScreen').classList.add('hidden');
                 document.getElementById('loginScreen').classList.remove('hidden');
-                loadDemoData();
+                showErrorNotification('Inisialisasi Gagal', 'Terjadi kesalahan saat memulai aplikasi.');
             }
         };
 
-        // Load demo data
-        function loadDemoData() {
-            allAssignments = [
-                {
-                    id: 'assignment_1',
-                    title: 'Tugas Matematika Bab 1',
-                    subject: 'Matematika',
-                    description: 'Kerjakan soal-soal pada halaman 25-30 tentang aljabar dasar',
-                    dueDate: '2024-02-15',
-                    createdAt: '2024-02-01T08:00:00Z',
-                    targetClass: '9A'
-                },
-                {
-                    id: 'assignment_2',
-                    title: 'Essay Bahasa Indonesia',
-                    subject: 'Bahasa Indonesia',
-                    description: 'Tulis essay tentang lingkungan hidup minimal 500 kata',
-                    dueDate: '2024-02-20',
-                    createdAt: '2024-02-02T10:30:00Z',
-                    targetClass: '9A'
-                },
-                {
-                    id: 'assignment_3',
-                    title: 'Praktikum IPA',
-                    subject: 'IPA',
-                    description: 'Laporan hasil percobaan tentang fotosintesis',
-                    dueDate: '2024-02-25',
-                    createdAt: '2024-02-03T13:45:00Z',
-                    targetClass: '9B'
-                }
-            ];
 
-            allUsers = [
-                {
-                    username: 'andi123',
-                    password: 'password123',
-                    fullName: 'Andi Pratama',
-                    class: '9A',
-                    role: 'student',
-                    registeredAt: '2024-01-15T08:00:00Z'
-                },
-                {
-                    username: 'sari456',
-                    password: 'password123',
-                    fullName: 'Sari Dewi',
-                    class: '9A',
-                    role: 'student',
-                    registeredAt: '2024-01-16T09:30:00Z'
-                },
-                {
-                    username: 'budi789',
-                    password: 'password123',
-                    fullName: 'Budi Santoso',
-                    class: '9B',
-                    role: 'student',
-                    registeredAt: '2024-01-17T10:15:00Z'
-                },
-                {
-                    username: 'admin',
-                    password: 'admin123',
-                    fullName: 'Administrator',
-                    role: 'admin',
-                    registeredAt: '2024-01-01T00:00:00Z'
-                },
-                {
-                    username: 'ajitprasetiyo',
-                    password: 'global1945',
-                    fullName: 'Ajit Prasetiyo',
-                    role: 'admin',
-                    registeredAt: '2024-01-01T00:00:00Z'
-                }
-            ];
-
-            allSubmissions = {
-                'andi123': {
-                    'assignment_1': {
-                        type: 'file',
-                        content: 'tugas_matematika_andi.pdf',
-                        notes: 'Sudah selesai semua soal',
-                        submittedAt: '2024-02-10T14:30:00Z'
-                    }
-                },
-                'sari456': {
-                    'assignment_1': {
-                        type: 'link',
-                        content: 'https://drive.google.com/file/d/abc123',
-                        notes: 'Link Google Drive',
-                        submittedAt: '2024-02-12T16:45:00Z'
-                    },
-                    'assignment_2': {
-                        type: 'text',
-                        content: 'Essay tentang pentingnya menjaga lingkungan hidup untuk generasi mendatang...',
-                        notes: 'Draft pertama',
-                        submittedAt: '2024-02-18T10:20:00Z'
-                    }
-                }
-            };
-        }
 
         // Login tab switching
         function switchLoginTab(tab) {
@@ -1555,6 +1539,11 @@
         document.getElementById('studentLoginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            if (connectionStatus !== 'connected') {
+                showErrorNotification('Database Tidak Terhubung', 'Tidak dapat login tanpa koneksi database. Silakan refresh halaman.');
+                return;
+            }
+            
             const loginBtn = document.getElementById('studentLoginBtn');
             const originalText = loginBtn.innerHTML;
             loginBtn.innerHTML = '<div class="loading"></div> Memproses...';
@@ -1564,20 +1553,34 @@
                 const username = document.getElementById('studentUsername').value.trim();
                 const password = document.getElementById('studentPassword').value;
                 
-                const user = allUsers.find(u => u.username === username && u.password === password && u.role === 'student');
+                console.log('📡 Checking Firebase database for student login...');
                 
-                if (user) {
-                    currentUser = user;
-                    showStudentDashboard();
-                    showSuccessNotification('Login Berhasil!', `Selamat datang, ${user.fullName}!`);
-                    console.log('🎉 Student login successful!');
+                // Check Firebase database directly
+                const { database, ref, get } = window.firebaseDB;
+                const userSnapshot = await get(ref(database, `users/${username}`));
+                
+                if (userSnapshot.exists()) {
+                    const userData = userSnapshot.val();
+                    console.log('👤 User found in Firebase:', userData);
+                    
+                    if (userData.password === password && userData.role === 'student') {
+                        currentUser = userData;
+                        showStudentDashboard();
+                        showSuccessNotification('Login Berhasil!', `Selamat datang, ${userData.fullName}! (Data dari Firebase)`);
+                        console.log('✅ Firebase authentication successful');
+                    } else if (userData.role !== 'student') {
+                        showErrorNotification('Login Gagal', 'Akun ini bukan akun siswa!');
+                    } else {
+                        showErrorNotification('Login Gagal', 'Password salah!');
+                    }
                 } else {
-                    showErrorNotification('Login Gagal', 'Username atau password salah!');
+                    console.log('❌ User not found in Firebase');
+                    showErrorNotification('Login Gagal', 'Username tidak ditemukan di database!');
                 }
                 
             } catch (error) {
                 console.error('Student login error:', error);
-                alert('Terjadi kesalahan saat login. Silakan coba lagi.');
+                showErrorNotification('Login Error', 'Terjadi kesalahan saat mengakses database. Silakan coba lagi.');
             } finally {
                 loginBtn.innerHTML = originalText;
                 loginBtn.disabled = false;
@@ -1588,6 +1591,11 @@
         document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            if (connectionStatus !== 'connected') {
+                showErrorNotification('Database Tidak Terhubung', 'Tidak dapat login tanpa koneksi database. Silakan refresh halaman.');
+                return;
+            }
+            
             const loginBtn = document.getElementById('adminLoginBtn');
             const originalText = loginBtn.innerHTML;
             loginBtn.innerHTML = '<div class="loading"></div> Memproses...';
@@ -1597,26 +1605,34 @@
                 const username = document.getElementById('adminUsername').value.trim();
                 const password = document.getElementById('adminPassword').value;
                 
-                console.log('Admin login attempt:', { username, password, allUsers: allUsers.length });
+                console.log('📡 Checking Firebase database for admin login...');
                 
-                const user = allUsers.find(u => {
-                    console.log('Checking user:', u.username, u.password, u.role);
-                    return u.username === username && u.password === password && u.role === 'admin';
-                });
+                // Check Firebase database directly
+                const { database, ref, get } = window.firebaseDB;
+                const userSnapshot = await get(ref(database, `users/${username}`));
                 
-                if (user) {
-                    currentUser = user;
-                    showAdminDashboard();
-                    showSuccessNotification('Login Admin Berhasil!', `Selamat datang, ${user.fullName}!`);
-                    console.log('🎉 Admin login successful!');
+                if (userSnapshot.exists()) {
+                    const userData = userSnapshot.val();
+                    console.log('👤 Admin user found in Firebase:', userData);
+                    
+                    if (userData.password === password && userData.role === 'admin') {
+                        currentUser = userData;
+                        showAdminDashboard();
+                        showSuccessNotification('Login Admin Berhasil!', `Selamat datang, ${userData.fullName}! (Data dari Firebase)`);
+                        console.log('✅ Firebase admin authentication successful');
+                    } else if (userData.role !== 'admin') {
+                        showErrorNotification('Login Gagal', 'Akun ini bukan akun admin!');
+                    } else {
+                        showErrorNotification('Login Gagal', 'Password admin salah!');
+                    }
                 } else {
-                    console.log('Admin login failed - user not found');
-                    showErrorNotification('Login Gagal', 'Username atau password admin salah!');
+                    console.log('❌ Admin user not found in Firebase');
+                    showErrorNotification('Login Gagal', 'Username admin tidak ditemukan di database!');
                 }
                 
             } catch (error) {
                 console.error('Admin login error:', error);
-                alert('Terjadi kesalahan saat login. Silakan coba lagi.');
+                showErrorNotification('Login Error', 'Terjadi kesalahan saat mengakses database. Silakan coba lagi.');
             } finally {
                 loginBtn.innerHTML = originalText;
                 loginBtn.disabled = false;
@@ -1626,6 +1642,11 @@
         // Register form handler
         document.getElementById('registerFormElement').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            if (connectionStatus !== 'connected') {
+                showErrorNotification('Database Tidak Terhubung', 'Tidak dapat mendaftar tanpa koneksi database. Silakan refresh halaman.');
+                return;
+            }
             
             const registerBtn = document.getElementById('registerBtn');
             const originalText = registerBtn.innerHTML;
@@ -1654,9 +1675,12 @@
                     return;
                 }
                 
-                // Check if username already exists
-                if (allUsers.find(u => u.username === username)) {
-                    showErrorNotification('Username Sudah Digunakan', 'Pilih username lain yang unik!');
+                // Check if username already exists in Firebase
+                const { database, ref, get, set } = window.firebaseDB;
+                const existingUserSnapshot = await get(ref(database, `users/${username}`));
+                
+                if (existingUserSnapshot.exists()) {
+                    showErrorNotification('Username Sudah Digunakan', 'Username sudah terdaftar di database. Pilih username lain!');
                     return;
                 }
                 
@@ -1669,26 +1693,19 @@
                     registeredAt: new Date().toISOString()
                 };
                 
-                // Save to Firebase if connected
-                if (window.firebaseDB && connectionStatus === 'connected') {
-                    try {
-                        const { database, ref, set } = window.firebaseDB;
-                        await set(ref(database, `users/${username}`), newUser);
-                        console.log('✅ User registered in Firebase');
-                    } catch (firebaseError) {
-                        console.log('⚠️ Firebase save failed, updating local data only');
-                    }
-                }
+                // Save to Firebase database
+                await set(ref(database, `users/${username}`), newUser);
+                console.log('✅ User registered in Firebase database');
                 
                 // Update local data
                 allUsers.push(newUser);
                 
-                showSuccessNotification('Registrasi Berhasil!', `Akun ${fullName} telah dibuat. Silakan login!`);
+                showSuccessNotification('Registrasi Berhasil!', `Akun ${fullName} telah dibuat di database. Silakan login!`);
                 showLoginForm();
                 
             } catch (error) {
                 console.error('Registration error:', error);
-                showErrorNotification('Registrasi Gagal', 'Terjadi kesalahan. Silakan coba lagi.');
+                showErrorNotification('Registrasi Gagal', 'Terjadi kesalahan saat menyimpan ke database. Silakan coba lagi.');
             } finally {
                 registerBtn.innerHTML = originalText;
                 registerBtn.disabled = false;
@@ -2176,6 +2193,11 @@
         document.getElementById('submitAssignmentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            if (connectionStatus !== 'connected') {
+                showErrorNotification('Database Tidak Terhubung', 'Tidak dapat mengumpulkan tugas tanpa koneksi database.');
+                return;
+            }
+            
             const submitBtn = document.getElementById('submitAssignmentBtn');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<div class="loading"></div> Mengirim...';
@@ -2217,16 +2239,10 @@
                     submittedAt: new Date().toISOString()
                 };
                 
-                // Save to Firebase if connected
-                if (window.firebaseDB && connectionStatus === 'connected') {
-                    try {
-                        const { database, ref, set } = window.firebaseDB;
-                        await set(ref(database, `submissions/${currentUser.username}/${currentAssignmentId}`), submission);
-                        console.log('✅ Submission saved to Firebase');
-                    } catch (firebaseError) {
-                        console.log('⚠️ Firebase save failed, updating local data only');
-                    }
-                }
+                // Save to Firebase database
+                const { database, ref, set } = window.firebaseDB;
+                await set(ref(database, `submissions/${currentUser.username}/${currentAssignmentId}`), submission);
+                console.log('✅ Submission saved to Firebase database');
                 
                 // Update local data
                 if (!allSubmissions[currentUser.username]) {
@@ -2238,11 +2254,11 @@
                 loadStudentDashboard();
                 
                 const assignment = allAssignments.find(a => a.id === currentAssignmentId);
-                showSuccessNotification('Tugas Dikumpulkan!', `Tugas "${assignment.title}" berhasil dikumpulkan.`);
+                showSuccessNotification('Tugas Dikumpulkan!', `Tugas "${assignment.title}" berhasil disimpan ke database.`);
                 
             } catch (error) {
                 console.error('Submit assignment error:', error);
-                showErrorNotification('Pengumpulan Gagal', 'Gagal mengumpulkan tugas. Silakan coba lagi.');
+                showErrorNotification('Pengumpulan Gagal', 'Gagal menyimpan tugas ke database. Silakan coba lagi.');
             } finally {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
@@ -2266,6 +2282,11 @@
         // Create assignment form handler
         document.getElementById('createAssignmentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            if (connectionStatus !== 'connected') {
+                showErrorNotification('Database Tidak Terhubung', 'Tidak dapat membuat tugas tanpa koneksi database.');
+                return;
+            }
             
             const createBtn = document.getElementById('createAssignmentBtn');
             const originalText = createBtn.innerHTML;
@@ -2295,16 +2316,10 @@
                     createdAt: new Date().toISOString()
                 };
                 
-                // Save to Firebase if connected
-                if (window.firebaseDB && connectionStatus === 'connected') {
-                    try {
-                        const { database, ref, set } = window.firebaseDB;
-                        await set(ref(database, `assignments/${assignmentId}`), newAssignment);
-                        console.log('✅ Assignment saved to Firebase');
-                    } catch (firebaseError) {
-                        console.log('⚠️ Firebase save failed, updating local data only');
-                    }
-                }
+                // Save to Firebase database
+                const { database, ref, set } = window.firebaseDB;
+                await set(ref(database, `assignments/${assignmentId}`), newAssignment);
+                console.log('✅ Assignment saved to Firebase database');
                 
                 // Update local data
                 allAssignments.push(newAssignment);
@@ -2313,45 +2328,58 @@
                 loadAdminAssignments();
                 loadAdminDashboard();
                 
-                showSuccessNotification('Tugas Dibuat!', `Tugas "${title}" untuk kelas ${targetClass} berhasil dibuat.`);
+                showSuccessNotification('Tugas Dibuat!', `Tugas "${title}" untuk kelas ${targetClass} berhasil disimpan ke database.`);
                 
             } catch (error) {
                 console.error('Create assignment error:', error);
-                showErrorNotification('Gagal Membuat Tugas', 'Terjadi kesalahan. Silakan coba lagi.');
+                showErrorNotification('Gagal Membuat Tugas', 'Terjadi kesalahan saat menyimpan ke database. Silakan coba lagi.');
             } finally {
                 createBtn.innerHTML = originalText;
                 createBtn.disabled = false;
             }
         });
 
-        function deleteAssignment(assignmentId) {
+        async function deleteAssignment(assignmentId) {
+            if (connectionStatus !== 'connected') {
+                showErrorNotification('Database Tidak Terhubung', 'Tidak dapat menghapus tugas tanpa koneksi database.');
+                return;
+            }
+            
             const assignment = allAssignments.find(a => a.id === assignmentId);
-            if (confirm(`Yakin ingin menghapus tugas "${assignment.title}"? Semua pengumpulan terkait akan ikut terhapus.`)) {
-                // Remove from Firebase if connected
-                if (window.firebaseDB && connectionStatus === 'connected') {
-                    try {
-                        const { database, ref, remove } = window.firebaseDB;
-                        remove(ref(database, `assignments/${assignmentId}`));
-                        console.log('✅ Assignment deleted from Firebase');
-                    } catch (firebaseError) {
-                        console.log('⚠️ Firebase delete failed, updating local data only');
+            if (confirm(`Yakin ingin menghapus tugas "${assignment.title}"? Semua pengumpulan terkait akan ikut terhapus dari database.`)) {
+                try {
+                    // Remove from Firebase database
+                    const { database, ref, remove } = window.firebaseDB;
+                    await remove(ref(database, `assignments/${assignmentId}`));
+                    console.log('✅ Assignment deleted from Firebase database');
+                    
+                    // Remove from local data
+                    allAssignments = allAssignments.filter(a => a.id !== assignmentId);
+                    
+                    // Remove related submissions from database
+                    const submissionsToDelete = [];
+                    Object.keys(allSubmissions).forEach(username => {
+                        if (allSubmissions[username][assignmentId]) {
+                            submissionsToDelete.push(remove(ref(database, `submissions/${username}/${assignmentId}`)));
+                            delete allSubmissions[username][assignmentId];
+                        }
+                    });
+                    
+                    // Wait for all submission deletions
+                    if (submissionsToDelete.length > 0) {
+                        await Promise.all(submissionsToDelete);
+                        console.log('✅ Related submissions deleted from Firebase database');
                     }
+                    
+                    loadAdminAssignments();
+                    loadAdminDashboard();
+                    
+                    showSuccessNotification('Tugas Dihapus!', `Tugas "${assignment.title}" berhasil dihapus dari database.`);
+                    
+                } catch (error) {
+                    console.error('Delete assignment error:', error);
+                    showErrorNotification('Gagal Menghapus Tugas', 'Terjadi kesalahan saat menghapus dari database.');
                 }
-                
-                // Remove from local data
-                allAssignments = allAssignments.filter(a => a.id !== assignmentId);
-                
-                // Remove related submissions
-                Object.keys(allSubmissions).forEach(username => {
-                    if (allSubmissions[username][assignmentId]) {
-                        delete allSubmissions[username][assignmentId];
-                    }
-                });
-                
-                loadAdminAssignments();
-                loadAdminDashboard();
-                
-                showSuccessNotification('Tugas Dihapus!', `Tugas "${assignment.title}" berhasil dihapus.`);
             }
         }
 
@@ -2547,5 +2575,5 @@
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98420a3676dd252c',t:'MTc1ODcxNDM3Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98421bf6675a252c',t:'MTc1ODcxNTA5OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
