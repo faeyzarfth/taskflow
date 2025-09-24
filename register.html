@@ -6,8 +6,8 @@
     <title>Registrasi Pengguna - ICT Taskflow</title>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f9; }
-        .container { padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        input { display: block; margin-bottom: 1rem; padding: 0.5rem; width: 250px; }
+        .container { padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 300px; }
+        input, select { display: block; margin-bottom: 1rem; padding: 0.5rem; width: 95%; }
         button { padding: 0.7rem; width: 100%; border: none; background-color: #007bff; color: white; cursor: pointer; border-radius: 4px; }
         button:hover { background-color: #0056b3; }
     </style>
@@ -16,8 +16,14 @@
 
     <div class="container">
         <h2>Daftar Akun Baru</h2>
-        <input type="email" id="email" placeholder="Masukkan Email" required>
-        <input type="password" id="password" placeholder="Masukkan Password" required>
+        <input type="text" id="name" placeholder="Nama Lengkap" required>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password (min. 6 karakter)" required>
+        <select id="role" required>
+            <option value="" disabled selected>Pilih Peran Anda</option>
+            <option value="Guru">Guru</option>
+            <option value="Siswa">Siswa</option>
+        </select>
         <button id="registerButton">Daftar</button>
     </div>
 
@@ -26,56 +32,65 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <script>
-        // =================================================================
         // KONFIGURASI FIREBASE ANDA
-        // Tempel objek firebaseConfig yang Anda dapatkan di sini.
-        // =================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
             authDomain: "ict-taskflow.firebaseapp.com",
             databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "ict-taskflow",
-            storageBucket: "ict-taskflow.storage.app",
+            storageBucket: "ict-taskflow.appspot.com",
             messagingSenderId: "546834422831",
             appId: "1:546834422831:web:53d11b2e126d138bf1fada",
             measurementId: "G-JC52GWE4LQ"
         };
 
-        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
-        
-        // Membuat referensi ke layanan Authentication
         const auth = firebase.auth();
+        const db = firebase.database();
 
-        // =================================================================
-        // LOGIKA REGISTRASI
-        // =================================================================
         const registerButton = document.getElementById('registerButton');
+        const nameInput = document.getElementById('name');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
+        const roleInput = document.getElementById('role');
 
         registerButton.addEventListener('click', (e) => {
-            e.preventDefault(); // Mencegah form dari refresh halaman
+            e.preventDefault();
             
+            const name = nameInput.value;
             const email = emailInput.value;
             const password = passwordInput.value;
+            const role = roleInput.value;
 
-            console.log("Mencoba mendaftar dengan email:", email);
+            if (!name || !role) {
+                alert("Harap isi nama lengkap dan pilih peran Anda.");
+                return;
+            }
 
-            // Fungsi inti dari Firebase untuk membuat pengguna baru
+            // Langkah 1: Buat pengguna di Firebase Authentication
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // Berhasil!
-                    console.log("Registrasi Berhasil!", userCredential.user);
-                    alert("Selamat, akun Anda berhasil dibuat!");
+                    const user = userCredential.user;
+                    console.log("Registrasi Auth Berhasil!", user);
+
+                    // Langkah 2: Simpan informasi tambahan ke Realtime Database
+                    db.ref('users/' + user.uid).set({
+                        name: name,
+                        email: email,
+                        role: role
+                    }).then(() => {
+                        alert("Selamat, akun Anda berhasil dibuat!");
+                        window.location.href = "index.html"; // Arahkan ke halaman login
+                    }).catch((dbError) => {
+                        console.error("Gagal menyimpan data profil:", dbError);
+                        alert("Gagal menyimpan profil: " + dbError.message);
+                    });
                 })
-                .catch((error) => {
-                    // Gagal, tampilkan pesan error
-                    console.error("Registrasi Gagal:", error.message);
-                    alert("Error: " + error.message);
+                .catch((authError) => {
+                    console.error("Registrasi Auth Gagal:", authError.message);
+                    alert("Error: " + authError.message);
                 });
         });
-
     </script>
 </body>
 </html>
