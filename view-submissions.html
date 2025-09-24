@@ -29,7 +29,7 @@
         const firebaseConfig = {
             apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
             authDomain: "ict-taskflow.firebaseapp.com",
-            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
+            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebaseddatabase.app",
             projectId: "ict-taskflow",
             storageBucket: "ict-taskflow.appspot.com",
             messagingSenderId: "546834422831",
@@ -47,57 +47,69 @@
             if (user) {
                 loadSubmissions();
             } else {
-                window.location.href = "index.html";
+                window.location.href = "index.html"; // Pastikan ini mengarah ke index.html
             }
         });
 
         function loadSubmissions() {
             const assignmentsRef = db.ref('assignments');
             const submissionsRef = db.ref('submissions');
+            const usersRef = db.ref('users'); // BARU: Referensi ke data pengguna
 
-            assignmentsRef.on('value', assignSnapshot => {
-                const assignments = assignSnapshot.val();
-                
-                submissionsRef.on('value', subSnapshot => {
-                    submissionsListDiv.innerHTML = '';
-                    const submissions = subSnapshot.val();
+            // 1. Ambil semua data pengguna sekali saja untuk dijadikan "kamus"
+            usersRef.once('value', userSnapshot => {
+                const users = userSnapshot.val();
 
-                    if (!assignments) {
-                        submissionsListDiv.innerHTML = '<p>Belum ada tugas yang dibuat.</p>';
-                        return;
-                    }
+                // 2. Ambil semua tugas
+                assignmentsRef.on('value', assignSnapshot => {
+                    const assignments = assignSnapshot.val();
+                    
+                    // 3. Ambil semua pengumpulan
+                    submissionsRef.on('value', subSnapshot => {
+                        submissionsListDiv.innerHTML = '';
+                        const submissions = subSnapshot.val();
 
-                    for (const taskId in assignments) {
-                        const task = assignments[taskId];
-                        const taskBlock = document.createElement('div');
-                        taskBlock.classList.add('task-block');
-                        
-                        let submissionsHTML = '<h4>Belum ada yang mengumpulkan.</h4>';
-                        let foundSubmissions = [];
+                        if (!assignments) {
+                            submissionsListDiv.innerHTML = '<p>Belum ada tugas yang dibuat.</p>';
+                            return;
+                        }
 
-                        if (submissions) {
-                            for (const subId in submissions) {
-                                if (submissions[subId].assignmentId === taskId) {
-                                    foundSubmissions.push(submissions[subId]);
+                        // 4. Loop melalui setiap tugas
+                        for (const taskId in assignments) {
+                            const task = assignments[taskId];
+                            const taskBlock = document.createElement('div');
+                            taskBlock.classList.add('task-block');
+                            
+                            let submissionsHTML = '<h4>Belum ada yang mengumpulkan.</h4>';
+                            let foundSubmissions = [];
+
+                            if (submissions) {
+                                for (const subId in submissions) {
+                                    if (submissions[subId].assignmentId === taskId) {
+                                        foundSubmissions.push(submissions[subId]);
+                                    }
                                 }
                             }
-                        }
 
-                        if (foundSubmissions.length > 0) {
-                            submissionsHTML = '<h4>Daftar Pengumpulan:</h4>';
-                            foundSubmissions.forEach(sub => {
-                                submissionsHTML += `
-                                    <div class="submission-item">
-                                        <a href="${sub.submissionLink}" target="_blank">Lihat Tugas yang Dikumpulkan</a>
-                                        <small>Oleh: ${sub.studentId} | Dikumpulkan pada: ${new Date(sub.submittedAt).toLocaleString()}</small>
-                                    </div>
-                                `;
-                            });
+                            if (foundSubmissions.length > 0) {
+                                submissionsHTML = '<h4>Daftar Pengumpulan:</h4>';
+                                foundSubmissions.forEach(sub => {
+                                    // BARU: Cari nama siswa menggunakan studentId
+                                    const studentName = users[sub.studentId] ? users[sub.studentId].name : 'Siswa Anonim';
+
+                                    submissionsHTML += `
+                                        <div class="submission-item">
+                                            <a href="${sub.submissionLink}" target="_blank">Lihat Tugas yang Dikumpulkan</a>
+                                            <small>Oleh: ${studentName} | Dikumpulkan pada: ${new Date(sub.submittedAt).toLocaleString()}</small>
+                                        </div>
+                                    `;
+                                });
+                            }
+                            
+                            taskBlock.innerHTML = `<h2>${task.title}</h2> ${submissionsHTML}`;
+                            submissionsListDiv.appendChild(taskBlock);
                         }
-                        
-                        taskBlock.innerHTML = `<h2>${task.title}</h2> ${submissionsHTML}`;
-                        submissionsListDiv.appendChild(taskBlock);
-                    }
+                    });
                 });
             });
         }
