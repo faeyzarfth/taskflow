@@ -60,23 +60,7 @@
                 app = initializeApp(firebaseConfig);
                 database = getDatabase(app);
                 
-                // Test connection
-                const testRef = ref(database, '.info/connected');
-                onValue(testRef, (snapshot) => {
-                    if (snapshot.val() === true) {
-                        updateConnectionStatus('connected');
-                        console.log('✅ Firebase connected successfully');
-                        retryCount = 0;
-                        
-                        // Load existing data when connected
-                        loadExistingData();
-                    } else {
-                        updateConnectionStatus('offline');
-                        console.log('⚠️ Firebase disconnected');
-                    }
-                });
-                
-                // Make Firebase functions globally available
+                // Make Firebase functions globally available first
                 window.firebaseDB = {
                     database,
                     ref,
@@ -111,8 +95,34 @@
                     }
                 };
                 
-                // Initialize the app
-                window.initializeApp();
+                // Test connection with timeout
+                const connectionTimeout = setTimeout(() => {
+                    console.log('⚠️ Firebase connection timeout, switching to offline mode');
+                    updateConnectionStatus('offline');
+                    window.initializeApp();
+                }, 5000);
+                
+                const testRef = ref(database, '.info/connected');
+                onValue(testRef, (snapshot) => {
+                    clearTimeout(connectionTimeout);
+                    if (snapshot.val() === true) {
+                        updateConnectionStatus('connected');
+                        console.log('✅ Firebase connected successfully');
+                        retryCount = 0;
+                        
+                        // Load existing data when connected
+                        loadExistingData();
+                        
+                        // Initialize the app if not already done
+                        if (document.getElementById('loadingScreen').classList.contains('hidden') === false) {
+                            window.initializeApp();
+                        }
+                    } else {
+                        updateConnectionStatus('offline');
+                        console.log('⚠️ Firebase disconnected');
+                        window.initializeApp();
+                    }
+                });
                 
             } catch (error) {
                 console.error('Firebase initialization error:', error);
@@ -294,8 +304,17 @@
             updateConnectionStatus('offline');
         });
         
-        // Start initialization
+        // Start initialization with fallback
         initializeFirebase();
+        
+        // Fallback initialization if Firebase takes too long
+        setTimeout(() => {
+            if (document.getElementById('loadingScreen').classList.contains('hidden') === false) {
+                console.log('🔄 Fallback initialization triggered');
+                updateConnectionStatus('offline');
+                window.initializeApp();
+            }
+        }, 8000);
     </script>
     
     <style>
@@ -1058,13 +1077,25 @@
 
         // Initialize app when Firebase is ready
         window.initializeApp = function() {
-            firebaseReady = (connectionStatus === 'connected');
-            document.getElementById('loadingScreen').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-            
-            // Load demo data as fallback
-            if (!firebaseReady || connectionStatus === 'offline') {
-                console.log('🔄 Loading demo data as fallback...');
+            try {
+                firebaseReady = (connectionStatus === 'connected');
+                
+                // Load demo data as fallback
+                if (!firebaseReady || connectionStatus === 'offline') {
+                    console.log('🔄 Loading demo data as fallback...');
+                    loadDemoData();
+                }
+                
+                // Show login screen
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                
+                console.log('✅ App initialized successfully');
+            } catch (error) {
+                console.error('App initialization error:', error);
+                // Force show login screen even if there's an error
+                document.getElementById('loadingScreen').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
                 loadDemoData();
             }
         };
@@ -2173,5 +2204,5 @@
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9841d5a3f59dfd63',t:'MTc1ODcxMjIxOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9841daad913bfd63',t:'MTc1ODcxMjQyNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
