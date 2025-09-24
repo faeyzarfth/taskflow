@@ -12,17 +12,16 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getDatabase, ref, set, get, child, push, onValue, remove, update, connectDatabaseEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
-        // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
-  authDomain: "ict-taskflow.firebaseapp.com",
-  databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "ict-taskflow",
-  storageBucket: "ict-taskflow.firebasestorage.app",
-  messagingSenderId: "546834422831",
-  appId: "1:546834422831:web:53d11b2e126d138bf1fada",
-  measurementId: "G-JC52GWE4LQ"
+        // Firebase configuration - GANTI DENGAN KONFIGURASI ANDA
+        const firebaseConfig = {
+        apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
+        authDomain: "ict-taskflow.firebaseapp.com",
+        databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "ict-taskflow",
+        storageBucket: "ict-taskflow.firebasestorage.app",
+        messagingSenderId: "546834422831",
+        appId: "1:546834422831:web:53d11b2e126d138bf1fada",
+        measurementId: "G-JC52GWE4LQ"
 };
         
         let app, database;
@@ -203,7 +202,7 @@ const firebaseConfig = {
                     <i class="fas fa-shield-alt text-red-600 text-2xl"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800 mb-2">Admin Panel</h1>
-                <p class="text-gray-600">EduSubmit Management System</p>
+                <p class="text-gray-600">ICT Taskflow Management System</p>
                 <div id="connectionStatus" class="mt-2 flex items-center justify-center text-sm">
                     <i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i>
                     <span class="text-yellow-600">Menghubungkan...</span>
@@ -252,7 +251,7 @@ const firebaseConfig = {
                         </div>
                         <div>
                             <h1 class="text-lg font-semibold text-gray-800">Admin Panel</h1>
-                            <p class="text-xs text-gray-500">EduSubmit</p>
+                            <p class="text-xs text-gray-500">ICT Taskflow</p>
                         </div>
                     </div>
                 </div>
@@ -268,6 +267,11 @@ const firebaseConfig = {
                                 class="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
                             <i class="fas fa-users mr-3"></i>
                             Kelola Siswa
+                        </button>
+                        <button onclick="showSection('users')" id="nav-users"
+                                class="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
+                            <i class="fas fa-user-cog mr-3"></i>
+                            Kelola User
                         </button>
                         <button onclick="showSection('assignments')" id="nav-assignments"
                                 class="w-full flex items-center px-4 py-3 text-left text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
@@ -422,6 +426,44 @@ const firebaseConfig = {
                     </div>
                 </div>
 
+                <!-- Users Management Section -->
+                <div id="section-users" class="hidden p-6">
+                    <div class="bg-white rounded-xl card-shadow">
+                        <div class="p-6 border-b flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-gray-800">Kelola User & Administrator</h3>
+                            <button onclick="openAddUserModal()" 
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-plus mr-2"></i>
+                                Tambah User
+                            </button>
+                        </div>
+                        <div class="p-6">
+                            <div class="mb-4">
+                                <input type="text" id="userSearch" placeholder="Cari user..." 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       onkeyup="filterUsers()">
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Lengkap</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kelas</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersTable" class="divide-y divide-gray-200">
+                                        <!-- Users will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Assignments Section -->
                 <div id="section-assignments" class="hidden p-6">
                     <div class="bg-white rounded-xl card-shadow">
@@ -500,6 +542,80 @@ const firebaseConfig = {
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-semibold text-gray-800">Tambah User Baru</h3>
+                <button onclick="closeAddUserModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="addUserForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="newUsername" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="Masukkan username">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="newPassword" required 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="Masukkan password">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select id="newUserRole" required 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Pilih Role</option>
+                        <option value="student">Student</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                </div>
+                
+                <div id="studentFields" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
+                        <input type="text" id="newFullName" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Masukkan nama lengkap">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                        <select id="newUserClass" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Pilih Kelas</option>
+                            <option value="7A">7A</option>
+                            <option value="7B">7B</option>
+                            <option value="8A">8A</option>
+                            <option value="8B">8B</option>
+                            <option value="9A">9A</option>
+                            <option value="9B">9B</option>
+                            <option value="9C">9C</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeAddUserModal()" 
+                            class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" id="addUserBtn"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
+                        <i class="fas fa-plus mr-2"></i>
+                        Tambah User
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -682,10 +798,13 @@ const firebaseConfig = {
         // Navigation
         function showSection(section) {
             // Hide all sections
-            const sections = ['dashboard', 'students', 'assignments', 'submissions', 'reports'];
+            const sections = ['dashboard', 'students', 'users', 'assignments', 'submissions', 'reports'];
             sections.forEach(s => {
                 document.getElementById(`section-${s}`).classList.add('hidden');
-                document.getElementById(`nav-${s}`).classList.remove('sidebar-active');
+                const navElement = document.getElementById(`nav-${s}`);
+                if (navElement) {
+                    navElement.classList.remove('sidebar-active');
+                }
             });
             
             // Show selected section
@@ -694,8 +813,9 @@ const firebaseConfig = {
             
             // Update page title
             const titles = {
-                dashboard: { title: 'Dashboard', subtitle: 'Ringkasan sistem EduSubmit' },
+                dashboard: { title: 'Dashboard', subtitle: 'Ringkasan sistem ICT Taskflow' },
                 students: { title: 'Kelola Siswa', subtitle: 'Manajemen data siswa' },
+                users: { title: 'Kelola User', subtitle: 'Manajemen user dan administrator' },
                 assignments: { title: 'Kelola Tugas', subtitle: 'Manajemen tugas dan deadline' },
                 submissions: { title: 'Monitor Pengumpulan', subtitle: 'Pantau pengumpulan tugas siswa' },
                 reports: { title: 'Laporan', subtitle: 'Analisis dan statistik sistem' }
@@ -711,6 +831,9 @@ const firebaseConfig = {
                     break;
                 case 'students':
                     loadStudentsData();
+                    break;
+                case 'users':
+                    loadUsersData();
                     break;
                 case 'assignments':
                     loadAssignmentsData();
@@ -1109,26 +1232,35 @@ const firebaseConfig = {
                 const dueDate = document.getElementById('assignmentDueDate').value;
                 
                 // Generate new ID
-                const newId = allAssignments.length > 0 ? Math.max(...allAssignments.map(a => a.id)) + 1 : 1;
+                const newId = allAssignments.length > 0 ? Math.max(...allAssignments.map(a => a.id || 0)) + 1 : 1;
                 
                 const newAssignment = {
                     id: newId,
                     title: title,
                     subject: subject,
                     description: description,
-                    dueDate: dueDate
+                    dueDate: dueDate,
+                    createdAt: new Date().toISOString()
                 };
                 
-                // Save to Firebase
-                const { database, ref, get, set } = window.firebaseDB;
-                const currentAssignments = [...allAssignments, newAssignment];
-                await set(ref(database, 'assignments'), currentAssignments);
+                // Save to Firebase if connected
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    try {
+                        const { database, ref, set } = window.firebaseDB;
+                        const currentAssignments = [...allAssignments, newAssignment];
+                        await set(ref(database, 'assignments'), currentAssignments);
+                        console.log('✅ Assignment saved to Firebase');
+                    } catch (firebaseError) {
+                        console.log('⚠️ Firebase save failed, using local storage:', firebaseError);
+                    }
+                }
                 
                 // Update local data
-                allAssignments = currentAssignments;
+                allAssignments = [...allAssignments, newAssignment];
                 
                 closeAddAssignmentModal();
                 loadAssignmentsData();
+                loadDashboardData();
                 alert('Tugas berhasil ditambahkan!');
                 
             } catch (error) {
@@ -1369,22 +1501,34 @@ const firebaseConfig = {
             }
             
             try {
-                const { database, ref, set } = window.firebaseDB;
-                
-                // Remove assignment from array
-                const updatedAssignments = allAssignments.filter(a => a.id !== assignmentId);
-                await set(ref(database, 'assignments'), updatedAssignments);
-                
-                // Remove submissions for this assignment
-                Object.keys(allSubmissions).forEach(async (username) => {
-                    if (allSubmissions[username][assignmentId]) {
-                        delete allSubmissions[username][assignmentId];
-                        await set(ref(database, `submissions/${username}`), allSubmissions[username]);
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    const { database, ref, set } = window.firebaseDB;
+                    
+                    // Remove assignment from array
+                    const updatedAssignments = allAssignments.filter(a => a.id != assignmentId);
+                    await set(ref(database, 'assignments'), updatedAssignments);
+                    
+                    // Remove submissions for this assignment
+                    for (const username of Object.keys(allSubmissions)) {
+                        if (allSubmissions[username] && allSubmissions[username][assignmentId]) {
+                            delete allSubmissions[username][assignmentId];
+                            await set(ref(database, `submissions/${username}`), allSubmissions[username]);
+                        }
                     }
-                });
-                
-                // Update local data
-                allAssignments = updatedAssignments;
+                    
+                    // Update local data
+                    allAssignments = updatedAssignments;
+                } else {
+                    // Offline mode - update local data only
+                    allAssignments = allAssignments.filter(a => a.id != assignmentId);
+                    
+                    // Remove submissions for this assignment
+                    Object.keys(allSubmissions).forEach(username => {
+                        if (allSubmissions[username] && allSubmissions[username][assignmentId]) {
+                            delete allSubmissions[username][assignmentId];
+                        }
+                    });
+                }
                 
                 loadAssignmentsData();
                 loadDashboardData();
@@ -1448,7 +1592,256 @@ const firebaseConfig = {
             showSection('submissions');
             // Optionally scroll to the specific assignment
         }
-    </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840a394d53e6014',t:'MTc1ODY5OTY4Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
-</html>
 
+        // User Management Functions
+        async function loadUsersData() {
+            const container = document.getElementById('usersTable');
+            container.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="loading mx-auto"></div></td></tr>';
+            
+            try {
+                let allUsers = [];
+                
+                // Load students
+                allStudents.forEach(student => {
+                    allUsers.push({
+                        username: student.username,
+                        role: 'student',
+                        fullName: student.fullName,
+                        class: student.class,
+                        status: 'Active'
+                    });
+                });
+                
+                // Load admins (try Firebase first, then fallback)
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    try {
+                        const { database, ref, get } = window.firebaseDB;
+                        const adminSnapshot = await get(ref(database, 'admin'));
+                        if (adminSnapshot.exists()) {
+                            const admins = adminSnapshot.val();
+                            Object.entries(admins).forEach(([username, data]) => {
+                                allUsers.push({
+                                    username: username,
+                                    role: 'admin',
+                                    fullName: 'Administrator',
+                                    class: '-',
+                                    status: 'Active'
+                                });
+                            });
+                        }
+                    } catch (error) {
+                        console.log('⚠️ Could not load admin data from Firebase');
+                    }
+                } else {
+                    // Add default admin
+                    allUsers.push({
+                        username: 'admin',
+                        role: 'admin',
+                        fullName: 'Administrator',
+                        class: '-',
+                        status: 'Active'
+                    });
+                }
+                
+                container.innerHTML = '';
+                
+                allUsers.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    row.innerHTML = `
+                        <td class="px-4 py-3 text-sm text-gray-900">${user.username}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                            }">
+                                ${user.role === 'admin' ? 'Administrator' : 'Student'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900">${user.fullName}</td>
+                        <td class="px-4 py-3 text-sm text-gray-900">${user.class}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                ${user.status}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <button onclick="editUser('${user.username}')" 
+                                    class="text-blue-600 hover:text-blue-800 mr-2">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${user.username !== 'admin' ? `
+                                <button onclick="deleteUser('${user.username}')" 
+                                        class="text-red-600 hover:text-red-800">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    `;
+                    container.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                container.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-600">Gagal memuat data user</td></tr>';
+            }
+        }
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#usersTable tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function openAddUserModal() {
+            document.getElementById('addUserModal').classList.remove('hidden');
+        }
+
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').classList.add('hidden');
+            document.getElementById('addUserForm').reset();
+            document.getElementById('studentFields').classList.add('hidden');
+        }
+
+        // Show/hide student fields based on role selection
+        document.getElementById('newUserRole').addEventListener('change', function() {
+            const role = this.value;
+            const studentFields = document.getElementById('studentFields');
+            
+            if (role === 'student') {
+                studentFields.classList.remove('hidden');
+                document.getElementById('newFullName').required = true;
+                document.getElementById('newUserClass').required = true;
+            } else {
+                studentFields.classList.add('hidden');
+                document.getElementById('newFullName').required = false;
+                document.getElementById('newUserClass').required = false;
+            }
+        });
+
+        // Add user form handler
+        document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const addBtn = document.getElementById('addUserBtn');
+            const originalText = addBtn.innerHTML;
+            addBtn.innerHTML = '<div class="loading"></div> Menyimpan...';
+            addBtn.disabled = true;
+            
+            try {
+                const username = document.getElementById('newUsername').value.trim();
+                const password = document.getElementById('newPassword').value;
+                const role = document.getElementById('newUserRole').value;
+                
+                // Check if username already exists
+                const existingUser = allStudents.find(s => s.username === username);
+                if (existingUser || username === 'admin') {
+                    alert('Username sudah digunakan! Pilih username lain.');
+                    return;
+                }
+                
+                if (role === 'student') {
+                    const fullName = document.getElementById('newFullName').value.trim();
+                    const userClass = document.getElementById('newUserClass').value;
+                    
+                    const newStudent = {
+                        username: username,
+                        password: password,
+                        fullName: fullName,
+                        class: userClass,
+                        registeredAt: new Date().toISOString()
+                    };
+                    
+                    // Save to Firebase if connected
+                    if (window.firebaseDB && connectionStatus === 'connected') {
+                        try {
+                            const { database, ref, set } = window.firebaseDB;
+                            await set(ref(database, `users/${username}`), newStudent);
+                            console.log('✅ Student saved to Firebase');
+                        } catch (firebaseError) {
+                            console.log('⚠️ Firebase save failed:', firebaseError);
+                        }
+                    }
+                    
+                    // Update local data
+                    allStudents.push(newStudent);
+                    
+                } else if (role === 'admin') {
+                    const newAdmin = {
+                        password: password,
+                        role: 'administrator',
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    // Save to Firebase if connected
+                    if (window.firebaseDB && connectionStatus === 'connected') {
+                        try {
+                            const { database, ref, set } = window.firebaseDB;
+                            await set(ref(database, `admin/${username}`), newAdmin);
+                            console.log('✅ Admin saved to Firebase');
+                        } catch (firebaseError) {
+                            console.log('⚠️ Firebase save failed:', firebaseError);
+                        }
+                    }
+                }
+                
+                closeAddUserModal();
+                loadUsersData();
+                loadDashboardData();
+                alert('User berhasil ditambahkan!');
+                
+            } catch (error) {
+                console.error('Error adding user:', error);
+                alert('Gagal menambahkan user. Silakan coba lagi.');
+            } finally {
+                addBtn.innerHTML = originalText;
+                addBtn.disabled = false;
+            }
+        });
+
+        function editUser(username) {
+            alert(`Fitur edit user untuk ${username} akan segera tersedia!`);
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Yakin ingin menghapus user ${username}? Data ini tidak dapat dikembalikan.`)) {
+                return;
+            }
+            
+            try {
+                // Find if it's a student or admin
+                const isStudent = allStudents.find(s => s.username === username);
+                
+                if (isStudent) {
+                    // Delete student
+                    if (window.firebaseDB && connectionStatus === 'connected') {
+                        const { database, ref, remove } = window.firebaseDB;
+                        await remove(ref(database, `users/${username}`));
+                        await remove(ref(database, `submissions/${username}`));
+                    }
+                    
+                    // Update local data
+                    allStudents = allStudents.filter(s => s.username !== username);
+                    delete allSubmissions[username];
+                } else {
+                    // Delete admin
+                    if (window.firebaseDB && connectionStatus === 'connected') {
+                        const { database, ref, remove } = window.firebaseDB;
+                        await remove(ref(database, `admin/${username}`));
+                    }
+                }
+                
+                loadUsersData();
+                loadDashboardData();
+                alert('User berhasil dihapus!');
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Gagal menghapus user. Silakan coba lagi.');
+            }
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840bc01402df87b',t:'MTc1ODcwMDY4Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
