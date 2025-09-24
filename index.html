@@ -14,15 +14,15 @@
         
         // Firebase configuration
         const firebaseConfig = {
-        apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
-        authDomain: "ict-taskflow.firebaseapp.com",
-        databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "ict-taskflow",
-        storageBucket: "ict-taskflow.firebasestorage.app",
-        messagingSenderId: "546834422831",
-        appId: "1:546834422831:web:53d11b2e126d138bf1fada",
-        measurementId: "G-JC52GWE4LQ"
-};
+            apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
+            authDomain: "ict-taskflow.firebaseapp.com",
+            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ict-taskflow",
+            storageBucket: "ict-taskflow.firebasestorage.app",
+            messagingSenderId: "546834422831",
+            appId: "1:546834422831:web:53d11b2e126d138bf1fada",
+            measurementId: "G-JC52GWE4LQ"
+        };
         
         let app, database;
         let connectionStatus = 'connecting';
@@ -67,6 +67,9 @@
                         updateConnectionStatus('connected');
                         console.log('✅ Firebase connected successfully');
                         retryCount = 0;
+                        
+                        // Load existing data when connected
+                        loadExistingData();
                     } else {
                         updateConnectionStatus('offline');
                         console.log('⚠️ Firebase disconnected');
@@ -115,6 +118,81 @@
                     updateConnectionStatus('offline');
                     window.initializeApp();
                 }
+            }
+        }
+        
+        // Load existing data from Firebase
+        async function loadExistingData() {
+            if (!window.firebaseDB || connectionStatus !== 'connected') return;
+            
+            try {
+                const { database, ref, get } = window.firebaseDB;
+                
+                // Load assignments
+                const assignmentsSnapshot = await get(ref(database, 'assignments'));
+                if (assignmentsSnapshot.exists()) {
+                    const assignmentsData = assignmentsSnapshot.val();
+                    allAssignments = Object.entries(assignmentsData).map(([key, value]) => ({
+                        id: key,
+                        ...value
+                    }));
+                    console.log(`📚 Loaded ${allAssignments.length} assignments from Firebase`);
+                } else {
+                    // Initialize with demo assignments if none exist
+                    await initializeDemoAssignments();
+                }
+                
+            } catch (error) {
+                console.error('Error loading existing data:', error);
+            }
+        }
+        
+        // Initialize demo assignments in Firebase
+        async function initializeDemoAssignments() {
+            if (!window.firebaseDB || connectionStatus !== 'connected') return;
+            
+            try {
+                const { database, ref, set } = window.firebaseDB;
+                
+                const demoAssignments = {
+                    'assignment_1': {
+                        title: 'Tugas Matematika Bab 1',
+                        subject: 'Matematika',
+                        description: 'Kerjakan soal-soal pada halaman 25-30 tentang aljabar dasar',
+                        dueDate: '2024-02-15',
+                        createdAt: '2024-02-01T08:00:00Z',
+                        targetClass: '9A'
+                    },
+                    'assignment_2': {
+                        title: 'Essay Bahasa Indonesia',
+                        subject: 'Bahasa Indonesia',
+                        description: 'Tulis essay tentang lingkungan hidup minimal 500 kata',
+                        dueDate: '2024-02-20',
+                        createdAt: '2024-02-02T10:30:00Z',
+                        targetClass: '9A'
+                    },
+                    'assignment_3': {
+                        title: 'Praktikum IPA',
+                        subject: 'IPA',
+                        description: 'Laporan hasil percobaan tentang fotosintesis',
+                        dueDate: '2024-02-25',
+                        createdAt: '2024-02-03T13:45:00Z',
+                        targetClass: '9B'
+                    }
+                };
+                
+                await set(ref(database, 'assignments'), demoAssignments);
+                
+                // Update local assignments
+                allAssignments = Object.entries(demoAssignments).map(([key, value]) => ({
+                    id: key,
+                    ...value
+                }));
+                
+                console.log('✅ Demo assignments initialized in Firebase');
+                
+            } catch (error) {
+                console.error('Error initializing demo assignments:', error);
             }
         }
         
@@ -581,28 +659,31 @@
         function loadDemoData() {
             allAssignments = [
                 {
-                    id: 1,
+                    id: 'assignment_1',
                     title: 'Tugas Matematika Bab 1',
                     subject: 'Matematika',
                     description: 'Kerjakan soal-soal pada halaman 25-30 tentang aljabar dasar',
                     dueDate: '2024-02-15',
-                    createdAt: '2024-02-01T08:00:00Z'
+                    createdAt: '2024-02-01T08:00:00Z',
+                    targetClass: '9A'
                 },
                 {
-                    id: 2,
+                    id: 'assignment_2',
                     title: 'Essay Bahasa Indonesia',
                     subject: 'Bahasa Indonesia',
                     description: 'Tulis essay tentang lingkungan hidup minimal 500 kata',
                     dueDate: '2024-02-20',
-                    createdAt: '2024-02-02T10:30:00Z'
+                    createdAt: '2024-02-02T10:30:00Z',
+                    targetClass: '9A'
                 },
                 {
-                    id: 3,
+                    id: 'assignment_3',
                     title: 'Praktikum IPA',
                     subject: 'IPA',
                     description: 'Laporan hasil percobaan tentang fotosintesis',
                     dueDate: '2024-02-25',
-                    createdAt: '2024-02-03T13:45:00Z'
+                    createdAt: '2024-02-03T13:45:00Z',
+                    targetClass: '9B'
                 }
             ];
         }
@@ -686,7 +767,7 @@
                         // Load demo submissions
                         const demoSubmissions = {
                             'andi123': {
-                                '1': {
+                                'assignment_1': {
                                     type: 'file',
                                     content: 'tugas_matematika_andi.pdf',
                                     notes: 'Sudah selesai semua soal',
@@ -694,13 +775,13 @@
                                 }
                             },
                             'sari456': {
-                                '1': {
+                                'assignment_1': {
                                     type: 'link',
                                     content: 'https://drive.google.com/file/d/abc123',
                                     notes: 'Link Google Drive',
                                     submittedAt: '2024-02-12T16:45:00Z'
                                 },
-                                '2': {
+                                'assignment_2': {
                                     type: 'text',
                                     content: 'Essay tentang pentingnya menjaga lingkungan hidup untuk generasi mendatang...',
                                     notes: 'Draft pertama',
@@ -1299,5 +1380,5 @@
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840f4d24237f879',t:'MTc1ODcwMzAwOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840ffa8513cf914',t:'MTc1ODcwMzQ1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
