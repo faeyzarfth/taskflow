@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Pengumpulan Tugas - EduSubmit</title>
+    <title>ICT Taskflow - Dashboard Siswa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set, get, child, push, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, set, get, child, push, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
-        // Firebase configuration - GANTI DENGAN KONFIGURASI ANDA
+        // Firebase configuration
         const firebaseConfig = {
         apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
         authDomain: "ict-taskflow.firebaseapp.com",
@@ -24,23 +24,156 @@
         measurementId: "G-JC52GWE4LQ"
 };
         
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
+        let app, database;
+        let connectionStatus = 'connecting';
+        let retryCount = 0;
+        const maxRetries = 5;
         
-        // Make Firebase functions globally available
-        window.firebaseDB = {
-            database,
-            ref,
-            set,
-            get,
-            child,
-            push,
-            onValue
-        };
+        // Connection status indicator
+        function updateConnectionStatus(status) {
+            connectionStatus = status;
+            
+            // Update welcome page indicator
+            const indicator = document.getElementById('connectionStatus');
+            if (indicator) {
+                switch(status) {
+                    case 'connected':
+                        indicator.innerHTML = '<i class="fas fa-cloud text-green-600 mr-1"></i><span class="text-green-600 text-sm">Terhubung ke Firebase</span>';
+                        break;
+                    case 'connecting':
+                        indicator.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i><span class="text-yellow-600 text-sm">Menghubungkan...</span>';
+                        break;
+                    case 'offline':
+                        indicator.innerHTML = '<i class="fas fa-wifi-slash text-orange-600 mr-1"></i><span class="text-orange-600 text-sm">Mode Demo</span>';
+                        break;
+                    case 'error':
+                        indicator.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-600 text-sm">Koneksi Bermasalah</span>';
+                        break;
+                }
+            }
+            
+            // Update dashboard header indicator
+            const headerIndicator = document.getElementById('headerConnectionStatus');
+            if (headerIndicator) {
+                switch(status) {
+                    case 'connected':
+                        headerIndicator.innerHTML = '<i class="fas fa-cloud text-green-600"></i>';
+                        headerIndicator.title = 'Terhubung ke Firebase';
+                        break;
+                    case 'connecting':
+                        headerIndicator.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-600"></i>';
+                        headerIndicator.title = 'Menghubungkan...';
+                        break;
+                    case 'offline':
+                        headerIndicator.innerHTML = '<i class="fas fa-wifi-slash text-orange-600"></i>';
+                        headerIndicator.title = 'Mode Demo';
+                        break;
+                    case 'error':
+                        headerIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600"></i>';
+                        headerIndicator.title = 'Koneksi Bermasalah';
+                        break;
+                }
+            }
+        }
         
-        // Initialize the app once Firebase is loaded
-        window.initializeApp();
+        // Initialize Firebase with retry mechanism
+        async function initializeFirebase() {
+            try {
+                updateConnectionStatus('connecting');
+                
+                app = initializeApp(firebaseConfig);
+                database = getDatabase(app);
+                
+                // Test connection
+                const testRef = ref(database, '.info/connected');
+                onValue(testRef, (snapshot) => {
+                    if (snapshot.val() === true) {
+                        updateConnectionStatus('connected');
+                        console.log('✅ Firebase connected successfully');
+                        retryCount = 0;
+                    } else {
+                        updateConnectionStatus('offline');
+                        console.log('⚠️ Firebase disconnected');
+                    }
+                });
+                
+                // Make Firebase functions globally available
+                window.firebaseDB = {
+                    database,
+                    ref,
+                    set: async (ref, value) => {
+                        try {
+                            await set(ref, value);
+                            return true;
+                        } catch (error) {
+                            console.error('Firebase set error:', error);
+                            throw error;
+                        }
+                    },
+                    get: async (ref) => {
+                        try {
+                            return await get(ref);
+                        } catch (error) {
+                            console.error('Firebase get error:', error);
+                            throw error;
+                        }
+                    },
+                    child,
+                    push,
+                    onValue,
+                    remove: async (ref) => {
+                        try {
+                            await remove(ref);
+                            return true;
+                        } catch (error) {
+                            console.error('Firebase remove error:', error);
+                            throw error;
+                        }
+                    },
+                    update: async (ref, updates) => {
+                        try {
+                            await update(ref, updates);
+                            return true;
+                        } catch (error) {
+                            console.error('Firebase update error:', error);
+                            throw error;
+                        }
+                    }
+                };
+                
+                // Initialize the app
+                window.initializeApp();
+                
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                updateConnectionStatus('error');
+                
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    console.log(`🔄 Retrying Firebase connection (${retryCount}/${maxRetries})...`);
+                    setTimeout(initializeFirebase, 2000 * retryCount);
+                } else {
+                    console.log('🔴 Max retries reached, switching to offline mode');
+                    updateConnectionStatus('offline');
+                    window.initializeApp();
+                }
+            }
+        }
+        
+        // Auto-retry connection on network changes
+        window.addEventListener('online', () => {
+            console.log('🌐 Network back online, retrying Firebase connection...');
+            retryCount = 0;
+            initializeFirebase();
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('📴 Network offline detected');
+            updateConnectionStatus('offline');
+        });
+        
+        // Start initialization
+        initializeFirebase();
     </script>
     
     <style>
@@ -52,6 +185,9 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .task-completed { background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); }
+        .task-pending { background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); }
+        .task-overdue { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -59,87 +195,166 @@
     <div id="loadingScreen" class="min-h-screen gradient-bg flex items-center justify-center">
         <div class="text-center text-white">
             <div class="loading mx-auto mb-4"></div>
-            <p>Menghubungkan ke database...</p>
+            <p>Memuat ICT Taskflow...</p>
         </div>
     </div>
 
-    <!-- Login Page -->
-    <div id="loginPage" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
+    <!-- Welcome Screen -->
+    <div id="welcomeScreen" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow p-8 w-full max-w-md animate-fade-in">
-            <div class="text-center mb-8">
-                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-graduation-cap text-blue-600 text-2xl"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">EduSubmit</h1>
-                <p class="text-gray-600">Portal Pengumpulan Tugas Siswa</p>
-                <div class="mt-2 flex items-center justify-center text-sm text-green-600">
-                    <i class="fas fa-cloud mr-1"></i>
-                    <span>Terhubung ke Firebase</span>
+            <!-- Admin Icon (Top Left) -->
+            <div class="absolute top-4 left-4">
+                <a href="https://faeyzarfth.github.io/taskflow/admin.html" target="_blank" 
+                   class="bg-red-100 hover:bg-red-200 w-12 h-12 rounded-full flex items-center justify-center transition-colors"
+                   title="Admin Panel">
+                    <i class="fas fa-user-shield text-red-600 text-lg"></i>
+                </a>
+            </div>
+            
+            <!-- Connection Status (Top Right) -->
+            <div class="absolute top-4 right-4">
+                <div id="connectionStatus" class="flex items-center">
+                    <i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i>
+                    <span class="text-yellow-600 text-sm">Menghubungkan...</span>
                 </div>
             </div>
             
-            <form id="loginForm" class="space-y-6">
-                <div id="fullNameField" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
-                    <input type="text" id="fullName" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                           placeholder="Masukkan nama lengkap Anda">
+            <div class="text-center mb-8 mt-8">
+                <div class="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-graduation-cap text-blue-600 text-3xl"></i>
                 </div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">ICT Taskflow</h1>
+                <p class="text-gray-600">Sistem Manajemen Tugas Digital</p>
+            </div>
+            
+            <div class="space-y-4">
+                <button onclick="showLogin()" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Masuk ke Akun
+                </button>
                 
+                <button onclick="showRegister()" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    Daftar Akun Baru
+                </button>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <p class="text-xs text-gray-500">
+                    Demo: andi123 / password123
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl card-shadow p-8 w-full max-w-md animate-fade-in">
+            <div class="text-center mb-8">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user text-blue-600 text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Masuk ke Akun</h1>
+                <p class="text-gray-600">Akses dashboard tugas Anda</p>
+            </div>
+            
+            <form id="loginForm" class="space-y-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                    <input type="text" id="studentName" required 
+                    <input type="text" id="loginUsername" required 
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                           placeholder="Masukkan username Anda">
+                           placeholder="Masukkan username">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                    <input type="password" id="studentId" required 
+                    <input type="password" id="loginPassword" required 
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                           placeholder="Masukkan password Anda">
+                           placeholder="Masukkan password">
                 </div>
                 
-                <div id="confirmPasswordField" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Konfirmasi Password</label>
-                    <input type="password" id="confirmPassword" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                           placeholder="Ulangi password Anda">
+                <button type="submit" id="loginBtn"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Masuk
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <button onclick="showWelcome()" class="text-blue-600 hover:text-blue-800 text-sm">
+                    ← Kembali ke halaman utama
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="registerScreen" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl card-shadow p-8 w-full max-w-md animate-fade-in">
+            <div class="text-center mb-8">
+                <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-user-plus text-green-600 text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Daftar Akun Baru</h1>
+                <p class="text-gray-600">Buat akun untuk mengakses tugas</p>
+            </div>
+            
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="regUsername" required 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                           placeholder="Pilih username unik">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="regPassword" required 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                           placeholder="Buat password">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
+                    <input type="text" id="regFullName" required 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                           placeholder="Nama lengkap Anda">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
-                    <select id="studentClass" required 
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    <select id="regClass" required 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
                         <option value="">Pilih Kelas</option>
                         <option value="7A">7A</option>
                         <option value="7B">7B</option>
+                        <option value="8A">8A</option>
+                        <option value="8B">8B</option>
                         <option value="9A">9A</option>
                         <option value="9B">9B</option>
                         <option value="9C">9C</option>
                     </select>
                 </div>
                 
-                <button type="submit" id="submitButton"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                    <i class="fas fa-sign-in-alt mr-2"></i>
-                    <span id="submitButtonText">Masuk ke Portal</span>
+                <button type="submit" id="registerBtn"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    Daftar Sekarang
                 </button>
             </form>
             
             <div class="mt-6 text-center">
-                <p class="text-gray-600 text-sm">
-                    <span id="toggleText">Belum punya akun?</span>
-                    <button type="button" onclick="toggleAuthMode()" class="text-blue-600 hover:text-blue-700 font-medium ml-1">
-                        <span id="toggleButtonText">Daftar di sini</span>
-                    </button>
-                </p>
+                <button onclick="showWelcome()" class="text-green-600 hover:text-green-800 text-sm">
+                    ← Kembali ke halaman utama
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Main Dashboard -->
-    <div id="dashboard" class="hidden">
+    <!-- Student Dashboard -->
+    <div id="studentDashboard" class="hidden min-h-screen bg-gray-50">
         <!-- Header -->
         <header class="bg-white shadow-sm border-b">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -148,18 +363,22 @@
                         <div class="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
                             <i class="fas fa-graduation-cap text-blue-600"></i>
                         </div>
-                        <h1 class="text-xl font-semibold text-gray-800">EduSubmit</h1>
-                        <div class="ml-3 flex items-center text-xs text-green-600">
-                            <i class="fas fa-cloud mr-1"></i>
-                            <span>Online</span>
+                        <div>
+                            <h1 class="text-lg font-semibold text-gray-800">ICT Taskflow</h1>
+                            <p class="text-xs text-gray-500">Dashboard Siswa</p>
                         </div>
                     </div>
                     
                     <div class="flex items-center space-x-4">
-                        <div class="text-right">
-                            <p class="text-sm font-medium text-gray-800" id="headerName">-</p>
-                            <p class="text-xs text-gray-500" id="headerClass">-</p>
+                        <div id="headerConnectionStatus" class="cursor-pointer" title="Status Koneksi">
+                            <i class="fas fa-spinner fa-spin text-yellow-600"></i>
                         </div>
+                        
+                        <div class="text-right">
+                            <p class="text-sm font-medium text-gray-800" id="studentName">Loading...</p>
+                            <p class="text-xs text-gray-500" id="studentClass">Loading...</p>
+                        </div>
+                        
                         <button onclick="logout()" 
                                 class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg transition-colors">
                             <i class="fas fa-sign-out-alt"></i>
@@ -171,16 +390,34 @@
 
         <!-- Main Content -->
         <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Stats Cards -->
+            <!-- Welcome Section -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Selamat Datang! 👋</h2>
+                <p class="text-gray-600">Kelola dan kumpulkan tugas Anda dengan mudah</p>
+            </div>
+
+            <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-xl card-shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-tasks text-blue-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-600">Total Tugas</p>
+                            <p class="text-2xl font-bold text-gray-800" id="totalTasks">0</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="bg-white rounded-xl card-shadow p-6">
                     <div class="flex items-center">
                         <div class="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center">
                             <i class="fas fa-check-circle text-green-600 text-xl"></i>
                         </div>
                         <div class="ml-4">
-                            <p class="text-sm text-gray-600">Tugas Selesai</p>
-                            <p class="text-2xl font-bold text-gray-800" id="completedCount">0</p>
+                            <p class="text-sm text-gray-600">Selesai</p>
+                            <p class="text-2xl font-bold text-gray-800" id="completedTasks">0</p>
                         </div>
                     </div>
                 </div>
@@ -191,42 +428,35 @@
                             <i class="fas fa-clock text-yellow-600 text-xl"></i>
                         </div>
                         <div class="ml-4">
-                            <p class="text-sm text-gray-600">Menunggu</p>
-                            <p class="text-2xl font-bold text-gray-800" id="pendingCount">0</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-xl card-shadow p-6">
-                    <div class="flex items-center">
-                        <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-tasks text-blue-600 text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm text-gray-600">Total Tugas</p>
-                            <p class="text-2xl font-bold text-gray-800" id="totalCount">0</p>
+                            <p class="text-sm text-gray-600">Belum Selesai</p>
+                            <p class="text-2xl font-bold text-gray-800" id="pendingTasks">0</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Assignment List -->
+            <!-- Tasks Section -->
             <div class="bg-white rounded-xl card-shadow">
-                <div class="p-6 border-b border-gray-200">
-                    <h2 class="text-xl font-semibold text-gray-800">Daftar Tugas</h2>
-                    <p class="text-gray-600 mt-1">Kumpulkan tugas Anda dengan mudah dan aman</p>
+                <div class="p-6 border-b flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">Daftar Tugas</h3>
+                    <select id="filterStatus" onchange="filterTasks()" 
+                            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Semua Tugas</option>
+                        <option value="completed">Selesai</option>
+                        <option value="pending">Belum Selesai</option>
+                        <option value="overdue">Terlambat</option>
+                    </select>
                 </div>
-                
                 <div class="p-6">
-                    <div id="assignmentsList" class="space-y-4">
-                        <!-- Assignments will be loaded here -->
+                    <div id="tasksList" class="space-y-4">
+                        <!-- Tasks will be loaded here -->
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Submit Modal -->
+    <!-- Submit Assignment Modal -->
     <div id="submitModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl max-w-md w-full p-6 animate-fade-in">
             <div class="flex justify-between items-center mb-6">
@@ -236,43 +466,52 @@
                 </button>
             </div>
             
+            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                <h4 class="font-medium text-gray-800" id="modalTaskTitle">Loading...</h4>
+                <p class="text-sm text-gray-600" id="modalTaskSubject">Loading...</p>
+                <p class="text-xs text-gray-500 mt-1" id="modalTaskDeadline">Loading...</p>
+            </div>
+            
             <form id="submitForm" class="space-y-4">
-                <input type="hidden" id="assignmentId">
-                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Pengumpulan</label>
-                    <select id="submissionType" onchange="toggleSubmissionFields()" 
+                    <select id="submissionType" required onchange="toggleSubmissionFields()"
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="link">Link/URL</option>
+                        <option value="">Pilih jenis pengumpulan</option>
+                        <option value="text">Jawaban Teks</option>
+                        <option value="link">Link (Google Drive, dll)</option>
                         <option value="file">Upload File</option>
-                        <option value="text">Teks/Catatan</option>
                     </select>
                 </div>
                 
-                <div id="linkField">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Link Tugas</label>
+                <!-- Text Submission -->
+                <div id="textSubmission" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Jawaban Anda</label>
+                    <textarea id="submissionText" rows="4" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                              placeholder="Tulis jawaban Anda di sini..."></textarea>
+                </div>
+                
+                <!-- Link Submission -->
+                <div id="linkSubmission" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Link Pengumpulan</label>
                     <input type="url" id="submissionLink" 
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                            placeholder="https://drive.google.com/...">
+                    <p class="text-xs text-gray-500 mt-1">Pastikan link dapat diakses oleh guru</p>
                 </div>
                 
-                <div id="fileField" class="hidden">
+                <!-- File Submission -->
+                <div id="fileSubmission" class="hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
                     <input type="file" id="submissionFile" 
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                           accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png">
-                    <p class="text-xs text-gray-500 mt-1">Format: PDF, DOC, PPT, JPG, PNG (Max 10MB)</p>
-                </div>
-                
-                <div id="textField" class="hidden">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Teks Tugas</label>
-                    <textarea id="submissionText" rows="4" 
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                              placeholder="Tulis jawaban atau catatan tugas di sini..."></textarea>
+                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    <p class="text-xs text-gray-500 mt-1">Format: PDF, DOC, DOCX, JPG, PNG (Max 10MB)</p>
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Catatan Tambahan (Opsional)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Catatan (Opsional)</label>
                     <textarea id="submissionNotes" rows="2" 
                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                               placeholder="Tambahkan catatan jika diperlukan..."></textarea>
@@ -283,7 +522,7 @@
                             class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg transition-colors">
                         Batal
                     </button>
-                    <button type="submit" id="submitAssignmentBtn"
+                    <button type="submit" id="submitBtn"
                             class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
                         <i class="fas fa-paper-plane mr-2"></i>
                         Kumpulkan
@@ -294,426 +533,617 @@
     </div>
 
     <script>
-        // Sample assignments data
-        const assignments = [
-            {
-                id: 1,
-                title: "Esai Sejarah Indonesia",
-                subject: "Sejarah",
-                dueDate: "2024-01-25",
-                description: "Tulis esai tentang perjuangan kemerdekaan Indonesia (min. 1000 kata)"
-            },
-            {
-                id: 2,
-                title: "Laporan Praktikum Kimia",
-                subject: "Kimia",
-                dueDate: "2024-01-28",
-                description: "Buat laporan hasil praktikum reaksi asam basa"
-            },
-            {
-                id: 3,
-                title: "Presentasi Bahasa Inggris",
-                subject: "Bahasa Inggris",
-                dueDate: "2024-01-30",
-                description: "Siapkan presentasi 10 menit tentang budaya negara ASEAN"
-            }
-        ];
-
         // Global variables
-        let currentUser = null;
-        let isSignupMode = false;
         let firebaseReady = false;
+        let currentUser = null;
+        let allAssignments = [];
+        let allSubmissions = {};
+        let currentTaskId = null;
 
         // Initialize app when Firebase is ready
         window.initializeApp = function() {
-            firebaseReady = true;
+            firebaseReady = (connectionStatus === 'connected');
             document.getElementById('loadingScreen').classList.add('hidden');
-            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('welcomeScreen').classList.remove('hidden');
             
-            // Initialize sample assignments in Firebase if they don't exist
-            initializeAssignments();
+            // Load demo data as fallback
+            if (!firebaseReady || connectionStatus === 'offline') {
+                console.log('🔄 Loading demo data as fallback...');
+                loadDemoData();
+            }
         };
 
-        // Firebase helper functions
-        async function saveUser(username, userData) {
-            if (!firebaseReady) return false;
-            try {
-                const { database, ref, set } = window.firebaseDB;
-                await set(ref(database, 'users/' + username), userData);
-                return true;
-            } catch (error) {
-                console.error('Error saving user:', error);
-                return false;
-            }
+        // Navigation functions
+        function showWelcome() {
+            hideAllScreens();
+            document.getElementById('welcomeScreen').classList.remove('hidden');
         }
 
-        async function getUser(username) {
-            if (!firebaseReady) return null;
-            try {
-                const { database, ref, get } = window.firebaseDB;
-                const snapshot = await get(ref(database, 'users/' + username));
-                return snapshot.exists() ? snapshot.val() : null;
-            } catch (error) {
-                console.error('Error getting user:', error);
-                return null;
-            }
+        function showLogin() {
+            hideAllScreens();
+            document.getElementById('loginScreen').classList.remove('hidden');
         }
 
-        async function saveSubmission(username, assignmentId, submissionData) {
-            if (!firebaseReady) return false;
-            try {
-                const { database, ref, set } = window.firebaseDB;
-                await set(ref(database, `submissions/${username}/${assignmentId}`), submissionData);
-                return true;
-            } catch (error) {
-                console.error('Error saving submission:', error);
-                return false;
-            }
+        function showRegister() {
+            hideAllScreens();
+            document.getElementById('registerScreen').classList.remove('hidden');
         }
 
-        async function getUserSubmissions(username) {
-            if (!firebaseReady) return {};
-            try {
-                const { database, ref, get } = window.firebaseDB;
-                const snapshot = await get(ref(database, 'submissions/' + username));
-                return snapshot.exists() ? snapshot.val() : {};
-            } catch (error) {
-                console.error('Error getting submissions:', error);
-                return {};
-            }
+        function showDashboard() {
+            hideAllScreens();
+            document.getElementById('studentDashboard').classList.remove('hidden');
+            loadStudentDashboard();
         }
 
-        async function initializeAssignments() {
-            if (!firebaseReady) return;
-            try {
-                const { database, ref, get, set } = window.firebaseDB;
-                const snapshot = await get(ref(database, 'assignments'));
-                if (!snapshot.exists()) {
-                    await set(ref(database, 'assignments'), assignments);
-                }
-            } catch (error) {
-                console.error('Error initializing assignments:', error);
-            }
+        function hideAllScreens() {
+            const screens = ['welcomeScreen', 'loginScreen', 'registerScreen', 'studentDashboard'];
+            screens.forEach(screen => {
+                document.getElementById(screen).classList.add('hidden');
+            });
         }
 
-        // Toggle between login and signup
-        function toggleAuthMode() {
-            isSignupMode = !isSignupMode;
-            
-            const fullNameField = document.getElementById('fullNameField');
-            const confirmPasswordField = document.getElementById('confirmPasswordField');
-            const submitButtonText = document.getElementById('submitButtonText');
-            const toggleText = document.getElementById('toggleText');
-            const toggleButtonText = document.getElementById('toggleButtonText');
-            const fullNameInput = document.getElementById('fullName');
-            const confirmPasswordInput = document.getElementById('confirmPassword');
-            
-            if (isSignupMode) {
-                fullNameField.classList.remove('hidden');
-                confirmPasswordField.classList.remove('hidden');
-                fullNameInput.required = true;
-                confirmPasswordInput.required = true;
-                submitButtonText.innerHTML = '<i class="fas fa-user-plus mr-2"></i>Daftar Akun';
-                toggleText.textContent = 'Sudah punya akun?';
-                toggleButtonText.textContent = 'Masuk di sini';
-            } else {
-                fullNameField.classList.add('hidden');
-                confirmPasswordField.classList.add('hidden');
-                fullNameInput.required = false;
-                confirmPasswordInput.required = false;
-                submitButtonText.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Masuk ke Portal';
-                toggleText.textContent = 'Belum punya akun?';
-                toggleButtonText.textContent = 'Daftar di sini';
-            }
-            
-            document.getElementById('loginForm').reset();
-        }
-
-        // Login functionality
+        // Login form handler
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const submitButton = document.getElementById('submitButton');
-            const originalText = submitButton.innerHTML;
-            submitButton.innerHTML = '<div class="loading"></div> Memproses...';
-            submitButton.disabled = true;
-            
-            const username = document.getElementById('studentName').value;
-            const password = document.getElementById('studentId').value;
-            const studentClass = document.getElementById('studentClass').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const originalText = loginBtn.innerHTML;
+            loginBtn.innerHTML = '<div class="loading"></div> Memproses...';
+            loginBtn.disabled = true;
             
             try {
-                if (isSignupMode) {
-                    // Signup logic
-                    const fullName = document.getElementById('fullName').value;
-                    const confirmPassword = document.getElementById('confirmPassword').value;
-                    
-                    // Validation
-                    if (password !== confirmPassword) {
-                        alert('Password dan konfirmasi password tidak sama!');
-                        return;
-                    }
-                    
-                    if (password.length < 4) {
-                        alert('Password minimal 4 karakter!');
-                        return;
-                    }
-                    
-                    // Check if user exists
-                    const existingUser = await getUser(username);
-                    if (existingUser) {
-                        alert('Username sudah digunakan! Silakan pilih username lain.');
-                        return;
-                    }
-                    
-                    // Save new user
-                    const userData = {
-                        fullName: fullName,
-                        password: password,
-                        class: studentClass,
-                        registeredAt: new Date().toISOString()
-                    };
-                    
-                    const success = await saveUser(username, userData);
-                    if (success) {
-                        alert('Akun berhasil dibuat! Silakan login dengan username dan password Anda.');
-                        toggleAuthMode(); // Switch back to login mode
-                    } else {
-                        alert('Gagal membuat akun. Silakan coba lagi.');
-                    }
-                    
-                } else {
-                    // Login logic
-                    const user = await getUser(username);
-                    if (!user) {
-                        alert('Username tidak ditemukan! Silakan daftar terlebih dahulu.');
-                        return;
-                    }
-                    
-                    if (user.password !== password) {
-                        alert('Password salah!');
-                        return;
-                    }
-                    
-                    // Login successful
-                    currentUser = { 
-                        username: username, 
-                        name: user.fullName, 
-                        class: user.class 
-                    };
-                    
-                    // Update header
-                    document.getElementById('headerName').textContent = user.fullName;
-                    document.getElementById('headerClass').textContent = `${user.class} - ${username}`;
-                    
-                    // Show dashboard
-                    document.getElementById('loginPage').classList.add('hidden');
-                    document.getElementById('dashboard').classList.remove('hidden');
-                    
-                    await loadAssignments();
-                    await updateStats();
+                const username = document.getElementById('loginUsername').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                
+                if (!username || !password) {
+                    alert('Username dan password harus diisi!');
+                    return;
                 }
+                
+                let loginSuccess = false;
+                let userData = null;
+                
+                // Try Firebase authentication first if available
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    try {
+                        const { database, ref, get } = window.firebaseDB;
+                        const snapshot = await get(ref(database, `users/${username}`));
+                        
+                        if (snapshot.exists()) {
+                            userData = snapshot.val();
+                            if (userData.password === password) {
+                                loginSuccess = true;
+                                console.log('✅ Firebase login successful');
+                            }
+                        }
+                    } catch (firebaseError) {
+                        console.log('⚠️ Firebase login failed, trying demo credentials');
+                    }
+                }
+                
+                // Fallback to demo credentials
+                if (!loginSuccess) {
+                    const demoUsers = {
+                        'andi123': { password: 'password123', fullName: 'Andi Pratama', class: '9A' },
+                        'sari456': { password: 'password123', fullName: 'Sari Dewi', class: '9A' },
+                        'budi789': { password: 'password123', fullName: 'Budi Santoso', class: '9B' }
+                    };
+                    
+                    if (demoUsers[username] && demoUsers[username].password === password) {
+                        loginSuccess = true;
+                        userData = demoUsers[username];
+                        console.log('✅ Demo login successful');
+                    }
+                }
+                
+                if (loginSuccess && userData) {
+                    currentUser = {
+                        username: username,
+                        fullName: userData.fullName,
+                        class: userData.class
+                    };
+                    
+                    // Update header info
+                    document.getElementById('studentName').textContent = userData.fullName;
+                    document.getElementById('studentClass').textContent = `Kelas ${userData.class}`;
+                    
+                    showDashboard();
+                    console.log(`🎉 Welcome ${userData.fullName}!`);
+                } else {
+                    alert('Username atau password salah!\n\nCoba gunakan:\nUsername: andi123\nPassword: password123');
+                }
+                
             } catch (error) {
-                console.error('Auth error:', error);
-                alert('Terjadi kesalahan. Silakan coba lagi.');
+                console.error('Login error:', error);
+                alert('Terjadi kesalahan saat login. Silakan coba lagi.');
             } finally {
-                submitButton.innerHTML = originalText;
-                submitButton.disabled = false;
+                loginBtn.innerHTML = originalText;
+                loginBtn.disabled = false;
             }
         });
 
-        function logout() {
-            currentUser = null;
-            document.getElementById('loginPage').classList.remove('hidden');
-            document.getElementById('dashboard').classList.add('hidden');
-            document.getElementById('loginForm').reset();
-        }
-
-        async function loadAssignments() {
-            const container = document.getElementById('assignmentsList');
-            container.innerHTML = '<div class="text-center py-4"><div class="loading mx-auto"></div><p class="mt-2 text-gray-600">Memuat tugas...</p></div>';
+        // Register form handler
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const registerBtn = document.getElementById('registerBtn');
+            const originalText = registerBtn.innerHTML;
+            registerBtn.innerHTML = '<div class="loading"></div> Mendaftar...';
+            registerBtn.disabled = true;
             
             try {
-                const userSubmissions = await getUserSubmissions(currentUser.username);
+                const username = document.getElementById('regUsername').value.trim();
+                const password = document.getElementById('regPassword').value;
+                const fullName = document.getElementById('regFullName').value.trim();
+                const userClass = document.getElementById('regClass').value;
                 
-                container.innerHTML = '';
+                if (!username || !password || !fullName || !userClass) {
+                    alert('Semua field harus diisi!');
+                    return;
+                }
                 
-                assignments.forEach(assignment => {
-                    const userSubmission = userSubmissions[assignment.id];
-                    const isSubmitted = !!userSubmission;
-                    const isOverdue = new Date(assignment.dueDate) < new Date();
-                    
-                    const assignmentCard = document.createElement('div');
-                    assignmentCard.className = 'border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow';
-                    
-                    assignmentCard.innerHTML = `
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="flex-1">
-                                <h3 class="font-semibold text-gray-800 mb-1">${assignment.title}</h3>
-                                <p class="text-sm text-gray-600 mb-2">${assignment.subject}</p>
-                                <p class="text-sm text-gray-700">${assignment.description}</p>
-                            </div>
-                            <div class="ml-4 text-right">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    isSubmitted ? 'bg-green-100 text-green-800' : 
-                                    isOverdue ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                                }">
-                                    ${isSubmitted ? 'Selesai' : isOverdue ? 'Terlambat' : 'Menunggu'}
-                                </span>
-                            </div>
-                        </div>
+                // Check username length
+                if (username.length < 3) {
+                    alert('Username minimal 3 karakter!');
+                    return;
+                }
+                
+                // Check password length
+                if (password.length < 6) {
+                    alert('Password minimal 6 karakter!');
+                    return;
+                }
+                
+                // Check if username already exists (demo check)
+                const demoUsers = ['andi123', 'sari456', 'budi789', 'admin'];
+                if (demoUsers.includes(username)) {
+                    alert('Username sudah digunakan! Pilih username lain.');
+                    return;
+                }
+                
+                const newUser = {
+                    username: username,
+                    password: password,
+                    fullName: fullName,
+                    class: userClass,
+                    registeredAt: new Date().toISOString()
+                };
+                
+                // Save to Firebase if connected
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    try {
+                        const { database, ref, set, get } = window.firebaseDB;
                         
-                        <div class="flex justify-between items-center">
-                            <div class="text-sm text-gray-500">
-                                <i class="fas fa-calendar-alt mr-1"></i>
-                                Deadline: ${new Date(assignment.dueDate).toLocaleDateString('id-ID')}
-                            </div>
-                            
-                            <div class="flex space-x-2">
-                                ${isSubmitted ? `
-                                    <button onclick="viewSubmission(${assignment.id})" 
-                                            class="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm transition-colors">
-                                        <i class="fas fa-eye mr-1"></i>
-                                        Lihat
-                                    </button>
-                                ` : `
-                                    <button onclick="openSubmitModal(${assignment.id})" 
-                                            class="bg-green-100 hover:bg-green-200 text-green-600 px-3 py-1 rounded text-sm transition-colors">
-                                        <i class="fas fa-upload mr-1"></i>
-                                        Kumpulkan
-                                    </button>
-                                `}
-                            </div>
-                        </div>
+                        // Check if username exists in Firebase
+                        const existingUser = await get(ref(database, `users/${username}`));
+                        if (existingUser.exists()) {
+                            alert('Username sudah digunakan! Pilih username lain.');
+                            return;
+                        }
                         
-                        ${isSubmitted ? `
-                            <div class="mt-3 p-3 bg-gray-50 rounded-lg">
-                                <p class="text-sm text-gray-600 mb-1">Dikumpulkan pada: ${new Date(userSubmission.submittedAt).toLocaleDateString('id-ID')}</p>
-                                <p class="text-sm text-gray-700">Jenis: ${userSubmission.type === 'link' ? 'Link' : userSubmission.type === 'file' ? 'File' : 'Teks'}</p>
-                            </div>
-                        ` : ''}
-                    `;
-                    
-                    container.appendChild(assignmentCard);
-                });
+                        await set(ref(database, `users/${username}`), newUser);
+                        console.log('✅ User registered in Firebase');
+                    } catch (firebaseError) {
+                        console.log('⚠️ Firebase registration failed, using local storage');
+                    }
+                }
+                
+                alert(`Pendaftaran berhasil!\n\nSelamat datang ${fullName}!\nAnda dapat login dengan:\nUsername: ${username}\nPassword: ${password}`);
+                
+                // Auto login after registration
+                currentUser = {
+                    username: username,
+                    fullName: fullName,
+                    class: userClass
+                };
+                
+                document.getElementById('studentName').textContent = fullName;
+                document.getElementById('studentClass').textContent = `Kelas ${userClass}`;
+                
+                showDashboard();
+                
             } catch (error) {
-                console.error('Error loading assignments:', error);
-                container.innerHTML = '<div class="text-center py-4 text-red-600">Gagal memuat tugas. Silakan refresh halaman.</div>';
+                console.error('Registration error:', error);
+                alert('Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
+            } finally {
+                registerBtn.innerHTML = originalText;
+                registerBtn.disabled = false;
+            }
+        });
+
+        // Load demo data
+        function loadDemoData() {
+            allAssignments = [
+                {
+                    id: 1,
+                    title: 'Tugas Matematika Bab 1',
+                    subject: 'Matematika',
+                    description: 'Kerjakan soal-soal pada halaman 25-30 tentang aljabar dasar',
+                    dueDate: '2024-02-15'
+                },
+                {
+                    id: 2,
+                    title: 'Essay Bahasa Indonesia',
+                    subject: 'Bahasa Indonesia',
+                    description: 'Tulis essay tentang lingkungan hidup minimal 500 kata',
+                    dueDate: '2024-02-20'
+                },
+                {
+                    id: 3,
+                    title: 'Praktikum IPA',
+                    subject: 'IPA',
+                    description: 'Laporan hasil percobaan tentang fotosintesis',
+                    dueDate: '2024-02-25'
+                }
+            ];
+            
+            allSubmissions = {
+                'andi123': {
+                    '1': {
+                        type: 'file',
+                        content: 'tugas_matematika_andi.pdf',
+                        notes: 'Sudah selesai semua soal',
+                        submittedAt: '2024-02-10T14:30:00Z'
+                    }
+                },
+                'sari456': {
+                    '1': {
+                        type: 'link',
+                        content: 'https://drive.google.com/file/d/abc123',
+                        notes: 'Link Google Drive',
+                        submittedAt: '2024-02-12T16:45:00Z'
+                    },
+                    '2': {
+                        type: 'text',
+                        content: 'Essay tentang pentingnya menjaga lingkungan hidup untuk generasi mendatang...',
+                        notes: 'Draft pertama',
+                        submittedAt: '2024-02-18T10:20:00Z'
+                    }
+                }
+            };
+        }
+
+        // Load student dashboard
+        async function loadStudentDashboard() {
+            try {
+                // Load data from Firebase if connected
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    try {
+                        const { database, ref, get } = window.firebaseDB;
+                        
+                        // Load assignments
+                        const assignmentsSnapshot = await get(ref(database, 'assignments'));
+                        if (assignmentsSnapshot.exists()) {
+                            allAssignments = Object.values(assignmentsSnapshot.val());
+                        }
+                        
+                        // Load submissions
+                        const submissionsSnapshot = await get(ref(database, 'submissions'));
+                        if (submissionsSnapshot.exists()) {
+                            allSubmissions = submissionsSnapshot.val();
+                        }
+                        
+                        console.log('✅ Student data loaded from Firebase');
+                    } catch (error) {
+                        console.log('⚠️ Firebase load failed, using demo data');
+                    }
+                }
+                
+                // Update statistics
+                updateStudentStats();
+                
+                // Load tasks list
+                loadStudentTasks();
+                
+            } catch (error) {
+                console.error('Error loading student dashboard:', error);
+                updateStudentStats();
+                loadStudentTasks();
             }
         }
 
-        async function updateStats() {
+        function updateStudentStats() {
             if (!currentUser) return;
             
-            try {
-                const userSubmissions = await getUserSubmissions(currentUser.username);
-                const completed = Object.keys(userSubmissions).length;
-                const total = assignments.length;
-                const pending = total - completed;
-                
-                document.getElementById('completedCount').textContent = completed;
-                document.getElementById('pendingCount').textContent = pending;
-                document.getElementById('totalCount').textContent = total;
-            } catch (error) {
-                console.error('Error updating stats:', error);
-            }
+            const userSubmissions = allSubmissions[currentUser.username] || {};
+            const completedCount = Object.keys(userSubmissions).length;
+            const totalCount = allAssignments.length;
+            const pendingCount = totalCount - completedCount;
+            
+            document.getElementById('totalTasks').textContent = totalCount;
+            document.getElementById('completedTasks').textContent = completedCount;
+            document.getElementById('pendingTasks').textContent = pendingCount;
         }
 
+        function loadStudentTasks() {
+            if (!currentUser) return;
+            
+            const container = document.getElementById('tasksList');
+            const userSubmissions = allSubmissions[currentUser.username] || {};
+            
+            container.innerHTML = '';
+            
+            if (allAssignments.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada tugas yang tersedia.</p>';
+                return;
+            }
+            
+            allAssignments.forEach(assignment => {
+                const submission = userSubmissions[assignment.id];
+                const isCompleted = !!submission;
+                const isOverdue = new Date(assignment.dueDate) < new Date() && !isCompleted;
+                
+                let statusClass = 'bg-yellow-100 text-yellow-800';
+                let statusText = 'Belum Selesai';
+                let statusIcon = 'fas fa-clock';
+                let cardClass = 'task-pending';
+                
+                if (isCompleted) {
+                    statusClass = 'bg-green-100 text-green-800';
+                    statusText = 'Selesai';
+                    statusIcon = 'fas fa-check-circle';
+                    cardClass = 'task-completed';
+                } else if (isOverdue) {
+                    statusClass = 'bg-red-100 text-red-800';
+                    statusText = 'Terlambat';
+                    statusIcon = 'fas fa-exclamation-triangle';
+                    cardClass = 'task-overdue';
+                }
+                
+                const taskDiv = document.createElement('div');
+                taskDiv.className = `border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${cardClass}`;
+                taskDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800 mb-1">${assignment.title}</h4>
+                            <p class="text-sm text-gray-600 mb-2">${assignment.subject}</p>
+                            <p class="text-sm text-gray-700">${assignment.description}</p>
+                        </div>
+                        <div class="ml-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                <i class="${statusIcon} mr-1"></i>
+                                ${statusText}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            Deadline: ${new Date(assignment.dueDate).toLocaleDateString('id-ID')}
+                        </div>
+                        <div class="flex space-x-2">
+                            ${isCompleted ? `
+                                <button onclick="viewSubmission(${assignment.id})" 
+                                        class="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm transition-colors">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    Lihat
+                                </button>
+                                <button onclick="editSubmission(${assignment.id})" 
+                                        class="bg-yellow-100 hover:bg-yellow-200 text-yellow-600 px-3 py-1 rounded text-sm transition-colors">
+                                    <i class="fas fa-edit mr-1"></i>
+                                    Edit
+                                </button>
+                            ` : `
+                                <button onclick="openSubmitModal(${assignment.id})" 
+                                        class="bg-green-100 hover:bg-green-200 text-green-600 px-3 py-1 rounded text-sm transition-colors">
+                                    <i class="fas fa-paper-plane mr-1"></i>
+                                    Kumpulkan
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(taskDiv);
+            });
+        }
+
+        function filterTasks() {
+            if (!currentUser) return;
+            
+            const filterValue = document.getElementById('filterStatus').value;
+            const userSubmissions = allSubmissions[currentUser.username] || {};
+            
+            const taskElements = document.querySelectorAll('#tasksList > div');
+            
+            taskElements.forEach((element, index) => {
+                const assignment = allAssignments[index];
+                if (!assignment) return;
+                
+                const submission = userSubmissions[assignment.id];
+                const isCompleted = !!submission;
+                const isOverdue = new Date(assignment.dueDate) < new Date() && !isCompleted;
+                
+                let show = true;
+                
+                switch(filterValue) {
+                    case 'completed':
+                        show = isCompleted;
+                        break;
+                    case 'pending':
+                        show = !isCompleted && !isOverdue;
+                        break;
+                    case 'overdue':
+                        show = isOverdue;
+                        break;
+                    default:
+                        show = true;
+                }
+                
+                element.style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // Submit Assignment Modal Functions
         function openSubmitModal(assignmentId) {
-            document.getElementById('assignmentId').value = assignmentId;
+            currentTaskId = assignmentId;
+            const assignment = allAssignments.find(a => a.id == assignmentId);
+            
+            if (!assignment) return;
+            
+            document.getElementById('modalTaskTitle').textContent = assignment.title;
+            document.getElementById('modalTaskSubject').textContent = assignment.subject;
+            document.getElementById('modalTaskDeadline').textContent = `Deadline: ${new Date(assignment.dueDate).toLocaleDateString('id-ID')}`;
+            
             document.getElementById('submitModal').classList.remove('hidden');
-            document.getElementById('submitForm').reset();
-            toggleSubmissionFields();
         }
 
         function closeSubmitModal() {
             document.getElementById('submitModal').classList.add('hidden');
+            document.getElementById('submitForm').reset();
+            document.getElementById('textSubmission').classList.add('hidden');
+            document.getElementById('linkSubmission').classList.add('hidden');
+            document.getElementById('fileSubmission').classList.add('hidden');
+            currentTaskId = null;
         }
 
         function toggleSubmissionFields() {
             const type = document.getElementById('submissionType').value;
             
-            document.getElementById('linkField').classList.toggle('hidden', type !== 'link');
-            document.getElementById('fileField').classList.toggle('hidden', type !== 'file');
-            document.getElementById('textField').classList.toggle('hidden', type !== 'text');
+            // Hide all fields
+            document.getElementById('textSubmission').classList.add('hidden');
+            document.getElementById('linkSubmission').classList.add('hidden');
+            document.getElementById('fileSubmission').classList.add('hidden');
+            
+            // Show selected field
+            if (type === 'text') {
+                document.getElementById('textSubmission').classList.remove('hidden');
+            } else if (type === 'link') {
+                document.getElementById('linkSubmission').classList.remove('hidden');
+            } else if (type === 'file') {
+                document.getElementById('fileSubmission').classList.remove('hidden');
+            }
         }
 
+        // Submit form handler
         document.getElementById('submitForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const submitBtn = document.getElementById('submitAssignmentBtn');
+            if (!currentUser || !currentTaskId) return;
+            
+            const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<div class="loading"></div> Mengirim...';
             submitBtn.disabled = true;
             
             try {
-                const assignmentId = document.getElementById('assignmentId').value;
                 const type = document.getElementById('submissionType').value;
                 const notes = document.getElementById('submissionNotes').value;
                 
                 let content = '';
-                if (type === 'link') {
+                
+                if (type === 'text') {
+                    content = document.getElementById('submissionText').value;
+                    if (!content.trim()) {
+                        alert('Jawaban tidak boleh kosong!');
+                        return;
+                    }
+                } else if (type === 'link') {
                     content = document.getElementById('submissionLink').value;
+                    if (!content.trim()) {
+                        alert('Link tidak boleh kosong!');
+                        return;
+                    }
                 } else if (type === 'file') {
                     const file = document.getElementById('submissionFile').files[0];
-                    content = file ? file.name : '';
-                } else if (type === 'text') {
-                    content = document.getElementById('submissionText').value;
+                    if (!file) {
+                        alert('Pilih file untuk diupload!');
+                        return;
+                    }
+                    content = file.name; // In real app, this would be uploaded to storage
                 }
                 
-                if (!content) {
-                    alert('Mohon lengkapi pengumpulan tugas!');
-                    return;
-                }
-                
-                // Save submission to Firebase
-                const submissionData = {
+                const submission = {
                     type: type,
                     content: content,
                     notes: notes,
                     submittedAt: new Date().toISOString()
                 };
                 
-                const success = await saveSubmission(currentUser.username, assignmentId, submissionData);
-                
-                if (success) {
-                    closeSubmitModal();
-                    await loadAssignments();
-                    await updateStats();
-                    alert('Tugas berhasil dikumpulkan!');
-                } else {
-                    alert('Gagal mengumpulkan tugas. Silakan coba lagi.');
+                // Save to Firebase if connected
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    try {
+                        const { database, ref, set } = window.firebaseDB;
+                        await set(ref(database, `submissions/${currentUser.username}/${currentTaskId}`), submission);
+                        console.log('✅ Submission saved to Firebase');
+                    } catch (firebaseError) {
+                        console.log('⚠️ Firebase save failed, using local storage');
+                    }
                 }
+                
+                // Update local data
+                if (!allSubmissions[currentUser.username]) {
+                    allSubmissions[currentUser.username] = {};
+                }
+                allSubmissions[currentUser.username][currentTaskId] = submission;
+                
+                closeSubmitModal();
+                loadStudentTasks();
+                updateStudentStats();
+                
+                alert('Tugas berhasil dikumpulkan! 🎉');
+                
             } catch (error) {
                 console.error('Error submitting assignment:', error);
-                alert('Terjadi kesalahan. Silakan coba lagi.');
+                alert('Gagal mengumpulkan tugas. Silakan coba lagi.');
             } finally {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             }
         });
 
-        async function viewSubmission(assignmentId) {
-            try {
-                const userSubmissions = await getUserSubmissions(currentUser.username);
-                const submission = userSubmissions[assignmentId];
-                if (!submission) return;
+        function viewSubmission(assignmentId) {
+            if (!currentUser) return;
+            
+            const assignment = allAssignments.find(a => a.id == assignmentId);
+            const submission = allSubmissions[currentUser.username][assignmentId];
+            
+            if (!assignment || !submission) return;
+            
+            let content = '';
+            if (submission.type === 'text') {
+                content = `Jawaban: ${submission.content}`;
+            } else if (submission.type === 'link') {
+                content = `Link: ${submission.content}`;
+            } else if (submission.type === 'file') {
+                content = `File: ${submission.content}`;
+            }
+            
+            alert(`Detail Pengumpulan:\n\nTugas: ${assignment.title}\nMata Pelajaran: ${assignment.subject}\n\n${content}\n\nCatatan: ${submission.notes || 'Tidak ada'}\n\nDikumpulkan: ${new Date(submission.submittedAt).toLocaleString('id-ID')}`);
+        }
+
+        function editSubmission(assignmentId) {
+            if (!currentUser) return;
+            
+            // Open submit modal with existing data
+            openSubmitModal(assignmentId);
+            
+            const submission = allSubmissions[currentUser.username][assignmentId];
+            if (!submission) return;
+            
+            // Pre-fill form with existing data
+            document.getElementById('submissionType').value = submission.type;
+            document.getElementById('submissionNotes').value = submission.notes || '';
+            
+            toggleSubmissionFields();
+            
+            if (submission.type === 'text') {
+                document.getElementById('submissionText').value = submission.content;
+            } else if (submission.type === 'link') {
+                document.getElementById('submissionLink').value = submission.content;
+            }
+        }
+
+        function logout() {
+            if (confirm('Yakin ingin logout?')) {
+                currentUser = null;
+                showWelcome();
                 
-                let content = '';
-                if (submission.type === 'link') {
-                    content = `Link: ${submission.content}`;
-                } else if (submission.type === 'file') {
-                    content = `File: ${submission.content}`;
-                } else if (submission.type === 'text') {
-                    content = `Teks: ${submission.content}`;
-                }
-                
-                alert(`Detail Pengumpulan:\n\n${content}\n\nCatatan: ${submission.notes || 'Tidak ada'}\n\nDikumpulkan: ${new Date(submission.submittedAt).toLocaleString('id-ID')}`);
-            } catch (error) {
-                console.error('Error viewing submission:', error);
-                alert('Gagal memuat detail pengumpulan.');
+                // Clear forms
+                document.getElementById('loginForm').reset();
+                document.getElementById('registerForm').reset();
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'984069476257fd1e',t:'MTc1ODY5NzI5NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840cd227487f853',t:'MTc1ODcwMTM4NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
