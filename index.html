@@ -21,7 +21,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <script>
+<<<<<<< HEAD
         // Konfigurasi dan inisialisasi Firebase (tetap di sini)
+=======
+        // KONFIGURASI FIREBASE ANDA
+>>>>>>> 4efe6f15d54a4f3fa0686a3dd49e2e76693c396e
         const firebaseConfig = {
             apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
             authDomain: "ict-taskflow.firebaseapp.com",
@@ -34,6 +38,44 @@
         };
 
         firebase.initializeApp(firebaseConfig);
+<<<<<<< HEAD
+=======
+        const auth = firebase.auth();
+
+        const loginButton = document.getElementById('loginButton');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+
+        loginButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            // --- VALIDASI BARU DITAMBAHKAN DI SINI ---
+            if (!email || !password) {
+                alert("Harap isi email dan password Anda.");
+                return; // Hentikan eksekusi jika salah satu kolom kosong
+            }
+            // -----------------------------------------
+
+            console.log("Mencoba login dengan email:", email);
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    console.log("Login Berhasil!", userCredential.user);
+                    alert("Selamat datang kembali!");
+                    // Di aplikasi nyata, di sinilah Anda akan mengarahkan pengguna ke halaman dashboard
+                    // Untuk sekarang kita biarkan di sini agar bisa melihat log.
+                    // Anda bisa menambahkan link ke halaman lain secara manual.
+                })
+                .catch((error) => {
+                    console.error("Login Gagal:", error.message);
+                    alert("Error: " + error.message);
+                });
+        });
+
+>>>>>>> 4efe6f15d54a4f3fa0686a3dd49e2e76693c396e
     </script>
     
     <script src="assets/js/login.js"></script>
