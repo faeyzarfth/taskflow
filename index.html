@@ -161,7 +161,7 @@
         
         // Load existing data from Firebase
         async function loadExistingData() {
-            if (!window.firebaseDB || connectionStatus !== 'connected') return;
+            if (!window.firebaseDB || (typeof connectionStatus !== 'undefined' && connectionStatus !== 'connected')) return;
             
             try {
                 const { database, ref, get } = window.firebaseDB;
@@ -213,7 +213,7 @@
         
         // Initialize demo data
         async function initializeDemoAssignments() {
-            if (!window.firebaseDB || connectionStatus !== 'connected') return;
+            if (!window.firebaseDB || (typeof connectionStatus !== 'undefined' && connectionStatus !== 'connected')) return;
             
             try {
                 const { database, ref, set } = window.firebaseDB;
@@ -259,7 +259,7 @@
         }
         
         async function initializeDemoUsers() {
-            if (!window.firebaseDB || connectionStatus !== 'connected') return;
+            if (!window.firebaseDB || (typeof connectionStatus !== 'undefined' && connectionStatus !== 'connected')) return;
             
             try {
                 const { database, ref, set } = window.firebaseDB;
@@ -293,6 +293,13 @@
                         username: 'admin',
                         password: 'admin123',
                         fullName: 'Administrator',
+                        role: 'admin',
+                        registeredAt: '2024-01-01T00:00:00Z'
+                    },
+                    'ajitprasetiyo': {
+                        username: 'ajitprasetiyo',
+                        password: 'global1945',
+                        fullName: 'Ajit Prasetiyo',
                         role: 'admin',
                         registeredAt: '2024-01-01T00:00:00Z'
                     }
@@ -1397,10 +1404,10 @@
         // Initialize app when Firebase is ready
         window.initializeApp = function() {
             try {
-                firebaseReady = (connectionStatus === 'connected');
+                firebaseReady = (typeof connectionStatus !== 'undefined' && connectionStatus === 'connected');
                 
                 // Load demo data as fallback
-                if (!firebaseReady || connectionStatus === 'offline') {
+                if (!firebaseReady || (typeof connectionStatus !== 'undefined' && connectionStatus === 'offline')) {
                     console.log('🔄 Loading demo data as fallback...');
                     loadDemoData();
                 }
@@ -1480,6 +1487,13 @@
                     username: 'admin',
                     password: 'admin123',
                     fullName: 'Administrator',
+                    role: 'admin',
+                    registeredAt: '2024-01-01T00:00:00Z'
+                },
+                {
+                    username: 'ajitprasetiyo',
+                    password: 'global1945',
+                    fullName: 'Ajit Prasetiyo',
                     role: 'admin',
                     registeredAt: '2024-01-01T00:00:00Z'
                 }
@@ -2533,5 +2547,5 @@
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9842063cb216252c',t:'MTc1ODcxNDIwOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98420a3676dd252c',t:'MTc1ODcxNDM3Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
