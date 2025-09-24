@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buat Tugas Baru - ICT Taskflow</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f9; }
+        .container { width: 500px; padding: 2rem; background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        input, textarea { display: block; margin-bottom: 1rem; padding: 0.5rem; width: 95%; }
+        textarea { height: 100px; }
+        button { padding: 0.7rem; width: 100%; border: none; background-color: #007bff; color: white; cursor: pointer; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Buat Tugas Baru</h2>
+        <input type="text" id="title" placeholder="Judul Tugas" required>
+        <textarea id="description" placeholder="Deskripsi Tugas" required></textarea>
+        <input type="date" id="dueDate" required>
+        <button id="saveTaskButton">Simpan Tugas</button>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <script>
+        // KONFIGURASI FIREBASE ANDA
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
+            authDomain: "ict-taskflow.firebaseapp.com",
+            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ict-taskflow",
+            storageBucket: "ict-taskflow.storage.app",
+            messagingSenderId: "546834422831",
+            appId: "1:546834422831:web:53d11b2e126d138bf1fada",
+            measurementId: "G-JC52GWE4LQ"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        const auth = firebase.auth();
+        const db = firebase.database(); // Referensi ke Realtime Database
+
+        // =================================================================
+        // PERIKSA STATUS LOGIN PENGGUNA
+        // Ini penting untuk memastikan hanya pengguna yang login yang bisa membuat tugas
+        // =================================================================
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Pengguna sedang login, biarkan mereka di halaman ini.
+                console.log("Pengguna terautentikasi:", user.uid);
+            } else {
+                // Pengguna tidak login, arahkan mereka ke halaman login.
+                console.log("Tidak ada pengguna, mengarahkan ke login.html");
+                window.location.href = "login.html";
+            }
+        });
+
+        // =================================================================
+        // LOGIKA MENYIMPAN TUGAS
+        // =================================================================
+        const saveTaskButton = document.getElementById('saveTaskButton');
+        const titleInput = document.getElementById('title');
+        const descriptionInput = document.getElementById('description');
+        const dueDateInput = document.getElementById('dueDate');
+
+        saveTaskButton.addEventListener('click', () => {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                alert("Anda harus login untuk membuat tugas!");
+                return;
+            }
+
+            const taskData = {
+                title: titleInput.value,
+                description: descriptionInput.value,
+                dueDate: dueDateInput.value,
+                teacherId: currentUser.uid, // Simpan ID pengguna yang membuat tugas
+                createdAt: firebase.database.ServerValue.TIMESTAMP // Simpan waktu server
+            };
+
+            // Menggunakan .push() akan membuat ID unik secara otomatis
+            db.ref('assignments').push(taskData)
+                .then(() => {
+                    alert("Tugas berhasil disimpan!");
+                    // Kosongkan form setelah berhasil
+                    titleInput.value = '';
+                    descriptionInput.value = '';
+                    dueDateInput.value = '';
+                })
+                .catch((error) => {
+                    console.error("Gagal menyimpan tugas:", error);
+                    alert("Gagal menyimpan tugas: " + error.message);
+                });
+        });
+    </script>
+</body>
+</html>

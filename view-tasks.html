@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Tugas - ICT Taskflow</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; padding: 2rem; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; }
+        .task-item { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; }
+        .task-item h3 { margin-top: 0; }
+        .task-item small { color: #888; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Daftar Semua Tugas</h1>
+        <div id="taskList">
+            </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <script>
+        // KONFIGURASI FIREBASE ANDA
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
+            authDomain: "ict-taskflow.firebaseapp.com",
+            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ict-taskflow",
+            storageBucket: "ict-taskflow.storage.app",
+            messagingSenderId: "546834422831",
+            appId: "1:546834422831:web:53d11b2e126d138bf1fada",
+            measurementId: "G-JC52GWE4LQ"
+        };
+
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        // =================================================================
+        // LOGIKA MENGAMBIL DAN MENAMPILKAN TUGAS SECARA REAL-TIME
+        // =================================================================
+        const taskListDiv = document.getElementById('taskList');
+        const assignmentsRef = db.ref('assignments');
+
+        // .on() akan terus "mendengarkan" perubahan di 'assignments'
+        assignmentsRef.on('value', (snapshot) => {
+            taskListDiv.innerHTML = ''; // Kosongkan daftar sebelum menampilkan yang baru
+            const assignments = snapshot.val();
+            
+            if (assignments) {
+                console.log("Data tugas diterima:", assignments);
+                // Loop melalui setiap tugas dan tampilkan di halaman
+                for (let taskId in assignments) {
+                    const task = assignments[taskId];
+                    const taskElement = document.createElement('div');
+                    taskElement.classList.add('task-item');
+                    taskElement.innerHTML = `
+                        <h3>${task.title}</h3>
+                        <p>${task.description}</p>
+                        <small>Tenggat Waktu: ${task.dueDate}</small>
+                    `;
+                    taskListDiv.appendChild(taskElement);
+                }
+            } else {
+                taskListDiv.innerHTML = '<p>Belum ada tugas yang dibuat.</p>';
+            }
+        });
+
+    </script>
+</body>
+</html>
