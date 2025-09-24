@@ -10,7 +10,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set, get, child, push, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, set, get, child, push, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
         // Firebase configuration
         const firebaseConfig = {
@@ -33,7 +33,6 @@
         function updateConnectionStatus(status) {
             connectionStatus = status;
             
-            // Update welcome page indicator
             const indicator = document.getElementById('connectionStatus');
             if (indicator) {
                 switch(status) {
@@ -48,29 +47,6 @@
                         break;
                     case 'error':
                         indicator.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-600 text-sm">Koneksi Bermasalah</span>';
-                        break;
-                }
-            }
-            
-            // Update dashboard header indicator
-            const headerIndicator = document.getElementById('headerConnectionStatus');
-            if (headerIndicator) {
-                switch(status) {
-                    case 'connected':
-                        headerIndicator.innerHTML = '<i class="fas fa-cloud text-green-600"></i>';
-                        headerIndicator.title = 'Terhubung ke Firebase';
-                        break;
-                    case 'connecting':
-                        headerIndicator.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-600"></i>';
-                        headerIndicator.title = 'Menghubungkan...';
-                        break;
-                    case 'offline':
-                        headerIndicator.innerHTML = '<i class="fas fa-wifi-slash text-orange-600"></i>';
-                        headerIndicator.title = 'Mode Demo';
-                        break;
-                    case 'error':
-                        headerIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600"></i>';
-                        headerIndicator.title = 'Koneksi Bermasalah';
                         break;
                 }
             }
@@ -120,25 +96,7 @@
                     },
                     child,
                     push,
-                    onValue,
-                    remove: async (ref) => {
-                        try {
-                            await remove(ref);
-                            return true;
-                        } catch (error) {
-                            console.error('Firebase remove error:', error);
-                            throw error;
-                        }
-                    },
-                    update: async (ref, updates) => {
-                        try {
-                            await update(ref, updates);
-                            return true;
-                        } catch (error) {
-                            console.error('Firebase update error:', error);
-                            throw error;
-                        }
-                    }
+                    onValue
                 };
                 
                 // Initialize the app
@@ -179,15 +137,13 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .gradient-bg { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
         .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .animate-fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .task-completed { background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); }
-        .task-pending { background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); }
-        .task-overdue { background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); }
+        .sidebar-active { background-color: #eff6ff; color: #2563eb; border-right: 3px solid #2563eb; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -199,156 +155,141 @@
         </div>
     </div>
 
-    <!-- Welcome Screen -->
-    <div id="welcomeScreen" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow p-8 w-full max-w-md animate-fade-in">
-            <!-- Admin Icon (Top Left) -->
-            <div class="absolute top-4 left-4">
-                <a href="https://faeyzarfth.github.io/taskflow/admin.html" target="_blank" 
-                   class="bg-red-100 hover:bg-red-200 w-12 h-12 rounded-full flex items-center justify-center transition-colors"
-                   title="Admin Panel">
-                    <i class="fas fa-user-shield text-red-600 text-lg"></i>
+    <!-- Main Dashboard -->
+    <div id="mainDashboard" class="hidden min-h-screen gradient-bg">
+        <div class="container mx-auto px-4 py-8">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <div class="bg-white w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 card-shadow">
+                    <i class="fas fa-graduation-cap text-red-600 text-4xl"></i>
+                </div>
+                <h1 class="text-4xl font-bold text-white mb-4">ICT Taskflow</h1>
+                <p class="text-red-100 text-lg">Sistem Manajemen Tugas Digital untuk Siswa</p>
+            </div>
+
+            <!-- Main Content -->
+            <div class="max-w-md mx-auto">
+                <!-- Single Card for Login/Register -->
+                <div class="bg-white rounded-2xl card-shadow p-8 animate-fade-in">
+                    <!-- Tab Navigation -->
+                    <div class="flex mb-8 bg-gray-100 rounded-lg p-1">
+                        <button onclick="switchTab('login')" id="loginTab"
+                                class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-white text-blue-600 shadow-sm">
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            Masuk
+                        </button>
+                        <button onclick="switchTab('register')" id="registerTab"
+                                class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            Daftar
+                        </button>
+                    </div>
+
+                    <!-- Login Form -->
+                    <div id="loginSection" class="tab-content">
+                        <div class="text-center mb-8">
+                            <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-user text-blue-600 text-2xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">Masuk Siswa</h2>
+                            <p class="text-gray-600">Akses dashboard tugas Anda</p>
+                        </div>
+                        
+                        <form id="loginForm" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                                <input type="text" id="username" required 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                       placeholder="Masukkan username Anda">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                                <input type="password" id="password" required 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                       placeholder="Masukkan password Anda">
+                            </div>
+                            
+                            <button type="submit" id="loginBtn"
+                                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                <i class="fas fa-sign-in-alt mr-2"></i>
+                                Masuk ke Dashboard
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Register Form -->
+                    <div id="registerSection" class="tab-content hidden">
+                        <div class="text-center mb-8">
+                            <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-user-plus text-green-600 text-2xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">Daftar Akun Baru</h2>
+                            <p class="text-gray-600">Buat akun untuk mengakses sistem</p>
+                        </div>
+                        
+                        <form id="registerForm" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                                <input type="text" id="regUsername" required 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                       placeholder="Pilih username unik">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                                <input type="password" id="regPassword" required 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                       placeholder="Buat password yang kuat">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
+                                <input type="text" id="regFullName" required 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                                       placeholder="Masukkan nama lengkap">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                                <select id="regClass" required 
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+                                    <option value="">Pilih Kelas</option>
+                                    <option value="7A">7A</option>
+                                    <option value="7B">7B</option>
+                                    <option value="8A">8A</option>
+                                    <option value="8B">8B</option>
+                                    <option value="9A">9A</option>
+                                    <option value="9B">9B</option>
+                                    <option value="9C">9C</option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" id="registerBtn"
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                <i class="fas fa-user-plus mr-2"></i>
+                                Daftar Akun Baru
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Connection Status -->
+                    <div class="mt-6 text-center">
+                        <div id="connectionStatus" class="flex items-center justify-center mb-3">
+                            <i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i>
+                            <span class="text-yellow-600 text-sm">Menghubungkan...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Access -->
+            <div class="text-center mt-12">
+                <a href="admin.html" 
+                   class="inline-flex items-center bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-6 py-3 rounded-lg transition-all backdrop-blur-sm">
+                    <i class="fas fa-user-shield mr-2"></i>
+                    Panel Admin
                 </a>
-            </div>
-            
-            <!-- Connection Status (Top Right) -->
-            <div class="absolute top-4 right-4">
-                <div id="connectionStatus" class="flex items-center">
-                    <i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i>
-                    <span class="text-yellow-600 text-sm">Menghubungkan...</span>
-                </div>
-            </div>
-            
-            <div class="text-center mb-8 mt-8">
-                <div class="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-graduation-cap text-blue-600 text-3xl"></i>
-                </div>
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">ICT Taskflow</h1>
-                <p class="text-gray-600">Sistem Manajemen Tugas Digital</p>
-            </div>
-            
-            <div class="space-y-4">
-                <button onclick="showLogin()" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                    <i class="fas fa-sign-in-alt mr-2"></i>
-                    Masuk ke Akun
-                </button>
-                
-                <button onclick="showRegister()" 
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                    <i class="fas fa-user-plus mr-2"></i>
-                    Daftar Akun Baru
-                </button>
-            </div>
-            
-            <div class="mt-6 text-center">
-                <p class="text-xs text-gray-500">
-                    Demo: andi123 / password123
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Login Screen -->
-    <div id="loginScreen" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow p-8 w-full max-w-md animate-fade-in">
-            <div class="text-center mb-8">
-                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-user text-blue-600 text-2xl"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">Masuk ke Akun</h1>
-                <p class="text-gray-600">Akses dashboard tugas Anda</p>
-            </div>
-            
-            <form id="loginForm" class="space-y-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                    <input type="text" id="loginUsername" required 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                           placeholder="Masukkan username">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                    <input type="password" id="loginPassword" required 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                           placeholder="Masukkan password">
-                </div>
-                
-                <button type="submit" id="loginBtn"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                    <i class="fas fa-sign-in-alt mr-2"></i>
-                    Masuk
-                </button>
-            </form>
-            
-            <div class="mt-6 text-center">
-                <button onclick="showWelcome()" class="text-blue-600 hover:text-blue-800 text-sm">
-                    ← Kembali ke halaman utama
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Register Screen -->
-    <div id="registerScreen" class="hidden min-h-screen gradient-bg flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow p-8 w-full max-w-md animate-fade-in">
-            <div class="text-center mb-8">
-                <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-user-plus text-green-600 text-2xl"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">Daftar Akun Baru</h1>
-                <p class="text-gray-600">Buat akun untuk mengakses tugas</p>
-            </div>
-            
-            <form id="registerForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                    <input type="text" id="regUsername" required 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                           placeholder="Pilih username unik">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                    <input type="password" id="regPassword" required 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                           placeholder="Buat password">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
-                    <input type="text" id="regFullName" required 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                           placeholder="Nama lengkap Anda">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
-                    <select id="regClass" required 
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
-                        <option value="">Pilih Kelas</option>
-                        <option value="7A">7A</option>
-                        <option value="7B">7B</option>
-                        <option value="8A">8A</option>
-                        <option value="8B">8B</option>
-                        <option value="9A">9A</option>
-                        <option value="9B">9B</option>
-                        <option value="9C">9C</option>
-                    </select>
-                </div>
-                
-                <button type="submit" id="registerBtn"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                    <i class="fas fa-user-plus mr-2"></i>
-                    Daftar Sekarang
-                </button>
-            </form>
-            
-            <div class="mt-6 text-center">
-                <button onclick="showWelcome()" class="text-green-600 hover:text-green-800 text-sm">
-                    ← Kembali ke halaman utama
-                </button>
             </div>
         </div>
     </div>
@@ -370,17 +311,13 @@
                     </div>
                     
                     <div class="flex items-center space-x-4">
-                        <div id="headerConnectionStatus" class="cursor-pointer" title="Status Koneksi">
-                            <i class="fas fa-spinner fa-spin text-yellow-600"></i>
-                        </div>
-                        
                         <div class="text-right">
-                            <p class="text-sm font-medium text-gray-800" id="studentName">Loading...</p>
-                            <p class="text-xs text-gray-500" id="studentClass">Loading...</p>
+                            <p class="text-sm font-medium text-gray-800" id="studentName">Nama Siswa</p>
+                            <p class="text-xs text-gray-500" id="studentClass">Kelas</p>
                         </div>
                         
                         <button onclick="logout()" 
-                                class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-2 rounded-lg transition-colors">
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-lg transition-colors">
                             <i class="fas fa-sign-out-alt"></i>
                         </button>
                     </div>
@@ -388,72 +325,163 @@
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Welcome Section -->
-            <div class="mb-8">
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Selamat Datang! 👋</h2>
-                <p class="text-gray-600">Kelola dan kumpulkan tugas Anda dengan mudah</p>
-            </div>
+        <div class="flex">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-white shadow-sm min-h-screen">
+                <nav class="mt-8">
+                    <div class="px-4 space-y-2">
+                        <button onclick="showStudentSection('dashboard')" id="student-nav-dashboard"
+                                class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors sidebar-active">
+                            <i class="fas fa-tachometer-alt mr-3"></i>
+                            Dashboard
+                        </button>
+                        <button onclick="showStudentSection('assignments')" id="student-nav-assignments"
+                                class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors">
+                            <i class="fas fa-tasks mr-3"></i>
+                            Tugas Saya
+                        </button>
+                        <button onclick="showStudentSection('submissions')" id="student-nav-submissions"
+                                class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors">
+                            <i class="fas fa-file-alt mr-3"></i>
+                            Pengumpulan
+                        </button>
+                        <button onclick="showStudentSection('profile')" id="student-nav-profile"
+                                class="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors">
+                            <i class="fas fa-user mr-3"></i>
+                            Profil Saya
+                        </button>
+                    </div>
+                </nav>
+            </aside>
 
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white rounded-xl card-shadow p-6">
-                    <div class="flex items-center">
-                        <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-tasks text-blue-600 text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm text-gray-600">Total Tugas</p>
-                            <p class="text-2xl font-bold text-gray-800" id="totalTasks">0</p>
-                        </div>
+            <!-- Main Content -->
+            <main class="flex-1 p-8">
+                <!-- Student Dashboard Section -->
+                <div id="student-section-dashboard" class="student-section-content">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Dashboard Siswa 📚</h2>
+                        <p class="text-gray-600">Selamat datang di ICT Taskflow</p>
                     </div>
-                </div>
-                
-                <div class="bg-white rounded-xl card-shadow p-6">
-                    <div class="flex items-center">
-                        <div class="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-check-circle text-green-600 text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm text-gray-600">Selesai</p>
-                            <p class="text-2xl font-bold text-gray-800" id="completedTasks">0</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-xl card-shadow p-6">
-                    <div class="flex items-center">
-                        <div class="bg-yellow-100 w-12 h-12 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-clock text-yellow-600 text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm text-gray-600">Belum Selesai</p>
-                            <p class="text-2xl font-bold text-gray-800" id="pendingTasks">0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Tasks Section -->
-            <div class="bg-white rounded-xl card-shadow">
-                <div class="p-6 border-b flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-800">Daftar Tugas</h3>
-                    <select id="filterStatus" onchange="filterTasks()" 
-                            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="">Semua Tugas</option>
-                        <option value="completed">Selesai</option>
-                        <option value="pending">Belum Selesai</option>
-                        <option value="overdue">Terlambat</option>
-                    </select>
-                </div>
-                <div class="p-6">
-                    <div id="tasksList" class="space-y-4">
-                        <!-- Tasks will be loaded here -->
+                    <!-- Statistics Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white rounded-xl card-shadow p-6">
+                            <div class="flex items-center">
+                                <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-tasks text-blue-600 text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm text-gray-600">Total Tugas</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="studentTotalAssignments">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl card-shadow p-6">
+                            <div class="flex items-center">
+                                <div class="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm text-gray-600">Selesai</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="studentCompletedAssignments">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl card-shadow p-6">
+                            <div class="flex items-center">
+                                <div class="bg-red-100 w-12 h-12 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm text-gray-600">Belum Selesai</p>
+                                    <p class="text-2xl font-bold text-gray-800" id="studentPendingAssignments">0</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Assignments -->
+                    <div class="bg-white rounded-xl card-shadow">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-semibold text-gray-800">Tugas Terbaru</h3>
+                        </div>
+                        <div class="p-6">
+                            <div id="recentAssignments" class="space-y-4">
+                                <!-- Recent assignments will be loaded here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </main>
+
+                <!-- Student Assignments Section -->
+                <div id="student-section-assignments" class="student-section-content hidden">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Tugas Saya 📝</h2>
+                        <p class="text-gray-600">Daftar semua tugas yang tersedia</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl card-shadow">
+                        <div class="p-6 border-b">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-lg font-semibold text-gray-800">Daftar Tugas</h3>
+                                <select id="filterStatus" onchange="filterAssignmentsByStatus()" 
+                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Semua Status</option>
+                                    <option value="completed">Sudah Dikumpulkan</option>
+                                    <option value="pending">Belum Dikumpulkan</option>
+                                    <option value="overdue">Terlambat</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div id="studentAssignmentsList" class="space-y-4">
+                                <!-- Student assignments will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student Submissions Section -->
+                <div id="student-section-submissions" class="student-section-content hidden">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Pengumpulan Tugas 📄</h2>
+                        <p class="text-gray-600">Riwayat pengumpulan tugas Anda</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl card-shadow">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-semibold text-gray-800">Riwayat Pengumpulan</h3>
+                        </div>
+                        <div class="p-6">
+                            <div id="studentSubmissionsList" class="space-y-4">
+                                <!-- Student submissions will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student Profile Section -->
+                <div id="student-section-profile" class="student-section-content hidden">
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Profil Saya 👤</h2>
+                        <p class="text-gray-600">Informasi akun dan pengaturan</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl card-shadow">
+                        <div class="p-6 border-b">
+                            <h3 class="text-lg font-semibold text-gray-800">Informasi Akun</h3>
+                        </div>
+                        <div class="p-6">
+                            <div id="studentProfileInfo" class="space-y-4">
+                                <!-- Student profile info will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
 
     <!-- Submit Assignment Modal -->
@@ -466,25 +494,25 @@
                 </button>
             </div>
             
-            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
-                <h4 class="font-medium text-gray-800" id="modalTaskTitle">Loading...</h4>
-                <p class="text-sm text-gray-600" id="modalTaskSubject">Loading...</p>
-                <p class="text-xs text-gray-500 mt-1" id="modalTaskDeadline">Loading...</p>
+            <div class="mb-4">
+                <h4 class="font-medium text-gray-800" id="submitAssignmentTitle">Judul Tugas</h4>
+                <p class="text-sm text-gray-600" id="submitAssignmentSubject">Mata Pelajaran</p>
             </div>
             
             <form id="submitForm" class="space-y-4">
+                <input type="hidden" id="submitAssignmentId">
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Pengumpulan</label>
-                    <select id="submissionType" required onchange="toggleSubmissionFields()"
+                    <select id="submissionType" onchange="toggleSubmissionInput()" required 
                             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <option value="">Pilih jenis pengumpulan</option>
+                        <option value="">Pilih Jenis</option>
                         <option value="text">Jawaban Teks</option>
                         <option value="link">Link (Google Drive, dll)</option>
-                        <option value="file">Upload File</option>
+                        <option value="file">Upload File (Demo)</option>
                     </select>
                 </div>
                 
-                <!-- Text Submission -->
                 <div id="textSubmission" class="hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Jawaban Anda</label>
                     <textarea id="submissionText" rows="4" 
@@ -492,22 +520,18 @@
                               placeholder="Tulis jawaban Anda di sini..."></textarea>
                 </div>
                 
-                <!-- Link Submission -->
                 <div id="linkSubmission" class="hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Link Pengumpulan</label>
                     <input type="url" id="submissionLink" 
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                            placeholder="https://drive.google.com/...">
-                    <p class="text-xs text-gray-500 mt-1">Pastikan link dapat diakses oleh guru</p>
                 </div>
                 
-                <!-- File Submission -->
                 <div id="fileSubmission" class="hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
                     <input type="file" id="submissionFile" 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                    <p class="text-xs text-gray-500 mt-1">Format: PDF, DOC, DOCX, JPG, PNG (Max 10MB)</p>
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">*Demo: File tidak akan benar-benar diupload</p>
                 </div>
                 
                 <div>
@@ -525,7 +549,7 @@
                     <button type="submit" id="submitBtn"
                             class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors">
                         <i class="fas fa-paper-plane mr-2"></i>
-                        Kumpulkan
+                        Kumpulkan Tugas
                     </button>
                 </div>
             </form>
@@ -537,14 +561,14 @@
         let firebaseReady = false;
         let currentUser = null;
         let allAssignments = [];
-        let allSubmissions = {};
-        let currentTaskId = null;
+        let userSubmissions = {};
+        let currentSubmitAssignmentId = null;
 
         // Initialize app when Firebase is ready
         window.initializeApp = function() {
             firebaseReady = (connectionStatus === 'connected');
             document.getElementById('loadingScreen').classList.add('hidden');
-            document.getElementById('welcomeScreen').classList.remove('hidden');
+            document.getElementById('mainDashboard').classList.remove('hidden');
             
             // Load demo data as fallback
             if (!firebaseReady || connectionStatus === 'offline') {
@@ -553,33 +577,34 @@
             }
         };
 
-        // Navigation functions
-        function showWelcome() {
-            hideAllScreens();
-            document.getElementById('welcomeScreen').classList.remove('hidden');
-        }
-
-        function showLogin() {
-            hideAllScreens();
-            document.getElementById('loginScreen').classList.remove('hidden');
-        }
-
-        function showRegister() {
-            hideAllScreens();
-            document.getElementById('registerScreen').classList.remove('hidden');
-        }
-
-        function showDashboard() {
-            hideAllScreens();
-            document.getElementById('studentDashboard').classList.remove('hidden');
-            loadStudentDashboard();
-        }
-
-        function hideAllScreens() {
-            const screens = ['welcomeScreen', 'loginScreen', 'registerScreen', 'studentDashboard'];
-            screens.forEach(screen => {
-                document.getElementById(screen).classList.add('hidden');
-            });
+        // Load demo data
+        function loadDemoData() {
+            allAssignments = [
+                {
+                    id: 1,
+                    title: 'Tugas Matematika Bab 1',
+                    subject: 'Matematika',
+                    description: 'Kerjakan soal-soal pada halaman 25-30 tentang aljabar dasar',
+                    dueDate: '2024-02-15',
+                    createdAt: '2024-02-01T08:00:00Z'
+                },
+                {
+                    id: 2,
+                    title: 'Essay Bahasa Indonesia',
+                    subject: 'Bahasa Indonesia',
+                    description: 'Tulis essay tentang lingkungan hidup minimal 500 kata',
+                    dueDate: '2024-02-20',
+                    createdAt: '2024-02-02T10:30:00Z'
+                },
+                {
+                    id: 3,
+                    title: 'Praktikum IPA',
+                    subject: 'IPA',
+                    description: 'Laporan hasil percobaan tentang fotosintesis',
+                    dueDate: '2024-02-25',
+                    createdAt: '2024-02-03T13:45:00Z'
+                }
+            ];
         }
 
         // Login form handler
@@ -592,8 +617,8 @@
             loginBtn.disabled = true;
             
             try {
-                const username = document.getElementById('loginUsername').value.trim();
-                const password = document.getElementById('loginPassword').value;
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
                 
                 if (!username || !password) {
                     alert('Username dan password harus diisi!');
@@ -614,6 +639,18 @@
                             if (userData.password === password) {
                                 loginSuccess = true;
                                 console.log('✅ Firebase login successful');
+                                
+                                // Load user submissions
+                                const submissionsSnapshot = await get(ref(database, `submissions/${username}`));
+                                if (submissionsSnapshot.exists()) {
+                                    userSubmissions = submissionsSnapshot.val();
+                                }
+                                
+                                // Load assignments
+                                const assignmentsSnapshot = await get(ref(database, 'assignments'));
+                                if (assignmentsSnapshot.exists()) {
+                                    allAssignments = Object.values(assignmentsSnapshot.val());
+                                }
                             }
                         }
                     } catch (firebaseError) {
@@ -624,15 +661,55 @@
                 // Fallback to demo credentials
                 if (!loginSuccess) {
                     const demoUsers = {
-                        'andi123': { password: 'password123', fullName: 'Andi Pratama', class: '9A' },
-                        'sari456': { password: 'password123', fullName: 'Sari Dewi', class: '9A' },
-                        'budi789': { password: 'password123', fullName: 'Budi Santoso', class: '9B' }
+                        'andi123': { 
+                            password: 'password123', 
+                            fullName: 'Andi Pratama', 
+                            class: '9A' 
+                        },
+                        'sari456': { 
+                            password: 'password123', 
+                            fullName: 'Sari Dewi', 
+                            class: '9A' 
+                        },
+                        'budi789': { 
+                            password: 'password123', 
+                            fullName: 'Budi Santoso', 
+                            class: '9B' 
+                        }
                     };
                     
                     if (demoUsers[username] && demoUsers[username].password === password) {
                         loginSuccess = true;
                         userData = demoUsers[username];
                         console.log('✅ Demo login successful');
+                        
+                        // Load demo submissions
+                        const demoSubmissions = {
+                            'andi123': {
+                                '1': {
+                                    type: 'file',
+                                    content: 'tugas_matematika_andi.pdf',
+                                    notes: 'Sudah selesai semua soal',
+                                    submittedAt: '2024-02-10T14:30:00Z'
+                                }
+                            },
+                            'sari456': {
+                                '1': {
+                                    type: 'link',
+                                    content: 'https://drive.google.com/file/d/abc123',
+                                    notes: 'Link Google Drive',
+                                    submittedAt: '2024-02-12T16:45:00Z'
+                                },
+                                '2': {
+                                    type: 'text',
+                                    content: 'Essay tentang pentingnya menjaga lingkungan hidup untuk generasi mendatang...',
+                                    notes: 'Draft pertama',
+                                    submittedAt: '2024-02-18T10:20:00Z'
+                                }
+                            }
+                        };
+                        
+                        userSubmissions = demoSubmissions[username] || {};
                     }
                 }
                 
@@ -643,14 +720,10 @@
                         class: userData.class
                     };
                     
-                    // Update header info
-                    document.getElementById('studentName').textContent = userData.fullName;
-                    document.getElementById('studentClass').textContent = `Kelas ${userData.class}`;
-                    
-                    showDashboard();
+                    showStudentDashboard();
                     console.log(`🎉 Welcome ${userData.fullName}!`);
                 } else {
-                    alert('Username atau password salah!\n\nCoba gunakan:\nUsername: andi123\nPassword: password123');
+                    alert('Username atau password salah!');
                 }
                 
             } catch (error) {
@@ -682,65 +755,65 @@
                     return;
                 }
                 
-                // Check username length
                 if (username.length < 3) {
                     alert('Username minimal 3 karakter!');
                     return;
                 }
                 
-                // Check password length
                 if (password.length < 6) {
                     alert('Password minimal 6 karakter!');
                     return;
                 }
                 
-                // Check if username already exists (demo check)
-                const demoUsers = ['andi123', 'sari456', 'budi789', 'admin'];
-                if (demoUsers.includes(username)) {
-                    alert('Username sudah digunakan! Pilih username lain.');
-                    return;
-                }
+                let registrationSuccess = false;
                 
-                const newUser = {
-                    username: username,
-                    password: password,
-                    fullName: fullName,
-                    class: userClass,
-                    registeredAt: new Date().toISOString()
-                };
-                
-                // Save to Firebase if connected
+                // Try Firebase registration first if available
                 if (window.firebaseDB && connectionStatus === 'connected') {
                     try {
-                        const { database, ref, set, get } = window.firebaseDB;
+                        const { database, ref, get, set } = window.firebaseDB;
                         
-                        // Check if username exists in Firebase
+                        // Check if username already exists
                         const existingUser = await get(ref(database, `users/${username}`));
                         if (existingUser.exists()) {
                             alert('Username sudah digunakan! Pilih username lain.');
                             return;
                         }
                         
+                        // Create new user
+                        const newUser = {
+                            username: username,
+                            password: password,
+                            fullName: fullName,
+                            class: userClass,
+                            registeredAt: new Date().toISOString()
+                        };
+                        
                         await set(ref(database, `users/${username}`), newUser);
-                        console.log('✅ User registered in Firebase');
+                        registrationSuccess = true;
+                        console.log('✅ Firebase registration successful');
+                        
                     } catch (firebaseError) {
-                        console.log('⚠️ Firebase registration failed, using local storage');
+                        console.log('⚠️ Firebase registration failed, using demo mode');
+                        registrationSuccess = true; // Allow demo registration
                     }
+                } else {
+                    registrationSuccess = true; // Allow demo registration
                 }
                 
-                alert(`Pendaftaran berhasil!\n\nSelamat datang ${fullName}!\nAnda dapat login dengan:\nUsername: ${username}\nPassword: ${password}`);
-                
-                // Auto login after registration
-                currentUser = {
-                    username: username,
-                    fullName: fullName,
-                    class: userClass
-                };
-                
-                document.getElementById('studentName').textContent = fullName;
-                document.getElementById('studentClass').textContent = `Kelas ${userClass}`;
-                
-                showDashboard();
+                if (registrationSuccess) {
+                    alert(`Pendaftaran berhasil!\n\nSelamat datang ${fullName}!\nAnda dapat login dengan:\nUsername: ${username}\nPassword: ${password}`);
+                    
+                    // Reset form
+                    document.getElementById('registerForm').reset();
+                    
+                    // Auto-fill login form
+                    document.getElementById('username').value = username;
+                    document.getElementById('password').value = password;
+                    
+                    console.log(`🎉 Registration successful for ${fullName}!`);
+                } else {
+                    alert('Gagal mendaftar. Silakan coba lagi.');
+                }
                 
             } catch (error) {
                 console.error('Registration error:', error);
@@ -751,148 +824,155 @@
             }
         });
 
-        // Load demo data
-        function loadDemoData() {
-            allAssignments = [
-                {
-                    id: 1,
-                    title: 'Tugas Matematika Bab 1',
-                    subject: 'Matematika',
-                    description: 'Kerjakan soal-soal pada halaman 25-30 tentang aljabar dasar',
-                    dueDate: '2024-02-15'
-                },
-                {
-                    id: 2,
-                    title: 'Essay Bahasa Indonesia',
-                    subject: 'Bahasa Indonesia',
-                    description: 'Tulis essay tentang lingkungan hidup minimal 500 kata',
-                    dueDate: '2024-02-20'
-                },
-                {
-                    id: 3,
-                    title: 'Praktikum IPA',
-                    subject: 'IPA',
-                    description: 'Laporan hasil percobaan tentang fotosintesis',
-                    dueDate: '2024-02-25'
-                }
-            ];
-            
-            allSubmissions = {
-                'andi123': {
-                    '1': {
-                        type: 'file',
-                        content: 'tugas_matematika_andi.pdf',
-                        notes: 'Sudah selesai semua soal',
-                        submittedAt: '2024-02-10T14:30:00Z'
-                    }
-                },
-                'sari456': {
-                    '1': {
-                        type: 'link',
-                        content: 'https://drive.google.com/file/d/abc123',
-                        notes: 'Link Google Drive',
-                        submittedAt: '2024-02-12T16:45:00Z'
-                    },
-                    '2': {
-                        type: 'text',
-                        content: 'Essay tentang pentingnya menjaga lingkungan hidup untuk generasi mendatang...',
-                        notes: 'Draft pertama',
-                        submittedAt: '2024-02-18T10:20:00Z'
-                    }
-                }
-            };
+        function showRegisterForm() {
+            switchTab('register');
         }
 
-        // Load student dashboard
-        async function loadStudentDashboard() {
-            try {
-                // Load data from Firebase if connected
-                if (window.firebaseDB && connectionStatus === 'connected') {
-                    try {
-                        const { database, ref, get } = window.firebaseDB;
-                        
-                        // Load assignments
-                        const assignmentsSnapshot = await get(ref(database, 'assignments'));
-                        if (assignmentsSnapshot.exists()) {
-                            allAssignments = Object.values(assignmentsSnapshot.val());
-                        }
-                        
-                        // Load submissions
-                        const submissionsSnapshot = await get(ref(database, 'submissions'));
-                        if (submissionsSnapshot.exists()) {
-                            allSubmissions = submissionsSnapshot.val();
-                        }
-                        
-                        console.log('✅ Student data loaded from Firebase');
-                    } catch (error) {
-                        console.log('⚠️ Firebase load failed, using demo data');
-                    }
-                }
-                
-                // Update statistics
-                updateStudentStats();
-                
-                // Load tasks list
-                loadStudentTasks();
-                
-            } catch (error) {
-                console.error('Error loading student dashboard:', error);
-                updateStudentStats();
-                loadStudentTasks();
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('registerSection').classList.add('hidden');
+            
+            // Reset tab buttons
+            document.getElementById('loginTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
+            document.getElementById('registerTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-600 hover:text-gray-800';
+            
+            // Show selected tab and activate button
+            if (tabName === 'login') {
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('loginTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-white text-blue-600 shadow-sm';
+            } else if (tabName === 'register') {
+                document.getElementById('registerSection').classList.remove('hidden');
+                document.getElementById('registerTab').className = 'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-white text-green-600 shadow-sm';
             }
         }
 
-        function updateStudentStats() {
-            if (!currentUser) return;
+        function showStudentDashboard() {
+            document.getElementById('mainDashboard').classList.add('hidden');
+            document.getElementById('studentDashboard').classList.remove('hidden');
             
-            const userSubmissions = allSubmissions[currentUser.username] || {};
-            const completedCount = Object.keys(userSubmissions).length;
-            const totalCount = allAssignments.length;
-            const pendingCount = totalCount - completedCount;
+            // Update header info
+            document.getElementById('studentName').textContent = currentUser.fullName;
+            document.getElementById('studentClass').textContent = `Kelas ${currentUser.class}`;
             
-            document.getElementById('totalTasks').textContent = totalCount;
-            document.getElementById('completedTasks').textContent = completedCount;
-            document.getElementById('pendingTasks').textContent = pendingCount;
+            // Load student data
+            loadStudentData();
         }
 
-        function loadStudentTasks() {
-            if (!currentUser) return;
+        function loadStudentData() {
+            updateStudentStats();
+            loadRecentAssignments();
+            loadStudentAssignments();
+            loadStudentSubmissions();
+            loadStudentProfile();
+        }
+
+        function updateStudentStats() {
+            const totalAssignments = allAssignments.length;
+            const completedAssignments = Object.keys(userSubmissions).length;
+            const pendingAssignments = totalAssignments - completedAssignments;
             
-            const container = document.getElementById('tasksList');
-            const userSubmissions = allSubmissions[currentUser.username] || {};
-            
+            document.getElementById('studentTotalAssignments').textContent = totalAssignments;
+            document.getElementById('studentCompletedAssignments').textContent = completedAssignments;
+            document.getElementById('studentPendingAssignments').textContent = pendingAssignments;
+        }
+
+        function loadRecentAssignments() {
+            const container = document.getElementById('recentAssignments');
             container.innerHTML = '';
             
             if (allAssignments.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada tugas yang tersedia.</p>';
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Belum ada tugas tersedia.</p>';
+                return;
+            }
+            
+            // Show only the 3 most recent assignments
+            const recentAssignments = allAssignments
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 3);
+            
+            recentAssignments.forEach(assignment => {
+                const isSubmitted = userSubmissions[assignment.id];
+                const isOverdue = new Date(assignment.dueDate) < new Date();
+                
+                const assignmentDiv = document.createElement('div');
+                assignmentDiv.className = `border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${isOverdue && !isSubmitted ? 'bg-red-50' : 'bg-white'}`;
+                assignmentDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800 mb-1">${assignment.title}</h4>
+                            <p class="text-sm text-gray-600">${assignment.subject}</p>
+                        </div>
+                        <div class="ml-4">
+                            ${isSubmitted ? 
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check mr-1"></i>Selesai</span>' :
+                                isOverdue ?
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><i class="fas fa-exclamation-triangle mr-1"></i>Terlambat</span>' :
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-clock mr-1"></i>Pending</span>'
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            Deadline: ${new Date(assignment.dueDate).toLocaleDateString('id-ID')}
+                        </div>
+                        ${!isSubmitted ? 
+                            `<button onclick="openSubmitModal(${assignment.id})" 
+                                    class="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm transition-colors">
+                                <i class="fas fa-paper-plane mr-1"></i>
+                                Kumpulkan
+                            </button>` : ''
+                        }
+                    </div>
+                `;
+                container.appendChild(assignmentDiv);
+            });
+        }
+
+        function showStudentSection(sectionName) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.student-section-content');
+            sections.forEach(section => section.classList.add('hidden'));
+            
+            // Remove active class from all nav buttons
+            const navButtons = document.querySelectorAll('[id^="student-nav-"]');
+            navButtons.forEach(btn => btn.classList.remove('sidebar-active'));
+            
+            // Show selected section
+            document.getElementById(`student-section-${sectionName}`).classList.remove('hidden');
+            document.getElementById(`student-nav-${sectionName}`).classList.add('sidebar-active');
+            
+            // Load section-specific data
+            if (sectionName === 'assignments') {
+                loadStudentAssignments();
+            } else if (sectionName === 'submissions') {
+                loadStudentSubmissions();
+            } else if (sectionName === 'profile') {
+                loadStudentProfile();
+            } else if (sectionName === 'dashboard') {
+                updateStudentStats();
+                loadRecentAssignments();
+            }
+        }
+
+        function loadStudentAssignments() {
+            const container = document.getElementById('studentAssignmentsList');
+            container.innerHTML = '';
+            
+            if (allAssignments.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada tugas tersedia.</p>';
                 return;
             }
             
             allAssignments.forEach(assignment => {
-                const submission = userSubmissions[assignment.id];
-                const isCompleted = !!submission;
-                const isOverdue = new Date(assignment.dueDate) < new Date() && !isCompleted;
+                const isSubmitted = userSubmissions[assignment.id];
+                const isOverdue = new Date(assignment.dueDate) < new Date();
                 
-                let statusClass = 'bg-yellow-100 text-yellow-800';
-                let statusText = 'Belum Selesai';
-                let statusIcon = 'fas fa-clock';
-                let cardClass = 'task-pending';
-                
-                if (isCompleted) {
-                    statusClass = 'bg-green-100 text-green-800';
-                    statusText = 'Selesai';
-                    statusIcon = 'fas fa-check-circle';
-                    cardClass = 'task-completed';
-                } else if (isOverdue) {
-                    statusClass = 'bg-red-100 text-red-800';
-                    statusText = 'Terlambat';
-                    statusIcon = 'fas fa-exclamation-triangle';
-                    cardClass = 'task-overdue';
-                }
-                
-                const taskDiv = document.createElement('div');
-                taskDiv.className = `border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${cardClass}`;
-                taskDiv.innerHTML = `
+                const assignmentDiv = document.createElement('div');
+                assignmentDiv.className = `border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${isOverdue && !isSubmitted ? 'bg-red-50' : 'bg-white'}`;
+                assignmentDiv.innerHTML = `
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex-1">
                             <h4 class="font-semibold text-gray-800 mb-1">${assignment.title}</h4>
@@ -900,10 +980,12 @@
                             <p class="text-sm text-gray-700">${assignment.description}</p>
                         </div>
                         <div class="ml-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-                                <i class="${statusIcon} mr-1"></i>
-                                ${statusText}
-                            </span>
+                            ${isSubmitted ? 
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check mr-1"></i>Selesai</span>' :
+                                isOverdue ?
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><i class="fas fa-exclamation-triangle mr-1"></i>Terlambat</span>' :
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-clock mr-1"></i>Pending</span>'
+                            }
                         </div>
                     </div>
                     
@@ -913,77 +995,169 @@
                             Deadline: ${new Date(assignment.dueDate).toLocaleDateString('id-ID')}
                         </div>
                         <div class="flex space-x-2">
-                            ${isCompleted ? `
-                                <button onclick="viewSubmission(${assignment.id})" 
-                                        class="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm transition-colors">
-                                    <i class="fas fa-eye mr-1"></i>
-                                    Lihat
-                                </button>
-                                <button onclick="editSubmission(${assignment.id})" 
-                                        class="bg-yellow-100 hover:bg-yellow-200 text-yellow-600 px-3 py-1 rounded text-sm transition-colors">
-                                    <i class="fas fa-edit mr-1"></i>
-                                    Edit
-                                </button>
-                            ` : `
-                                <button onclick="openSubmitModal(${assignment.id})" 
+                            ${isSubmitted ? 
+                                `<button onclick="viewSubmission(${assignment.id})" 
                                         class="bg-green-100 hover:bg-green-200 text-green-600 px-3 py-1 rounded text-sm transition-colors">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    Lihat Pengumpulan
+                                </button>` :
+                                `<button onclick="openSubmitModal(${assignment.id})" 
+                                        class="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm transition-colors">
                                     <i class="fas fa-paper-plane mr-1"></i>
-                                    Kumpulkan
-                                </button>
-                            `}
+                                    Kumpulkan Tugas
+                                </button>`
+                            }
                         </div>
                     </div>
                 `;
-                container.appendChild(taskDiv);
+                container.appendChild(assignmentDiv);
             });
         }
 
-        function filterTasks() {
-            if (!currentUser) return;
-            
+        function filterAssignmentsByStatus() {
             const filterValue = document.getElementById('filterStatus').value;
-            const userSubmissions = allSubmissions[currentUser.username] || {};
+            const assignmentElements = document.querySelectorAll('#studentAssignmentsList > div');
             
-            const taskElements = document.querySelectorAll('#tasksList > div');
-            
-            taskElements.forEach((element, index) => {
+            assignmentElements.forEach((element, index) => {
                 const assignment = allAssignments[index];
-                if (!assignment) return;
-                
-                const submission = userSubmissions[assignment.id];
-                const isCompleted = !!submission;
-                const isOverdue = new Date(assignment.dueDate) < new Date() && !isCompleted;
+                const isSubmitted = userSubmissions[assignment.id];
+                const isOverdue = new Date(assignment.dueDate) < new Date();
                 
                 let show = true;
                 
-                switch(filterValue) {
-                    case 'completed':
-                        show = isCompleted;
-                        break;
-                    case 'pending':
-                        show = !isCompleted && !isOverdue;
-                        break;
-                    case 'overdue':
-                        show = isOverdue;
-                        break;
-                    default:
-                        show = true;
+                if (filterValue === 'completed' && !isSubmitted) {
+                    show = false;
+                } else if (filterValue === 'pending' && (isSubmitted || isOverdue)) {
+                    show = false;
+                } else if (filterValue === 'overdue' && (!isOverdue || isSubmitted)) {
+                    show = false;
                 }
                 
                 element.style.display = show ? 'block' : 'none';
             });
         }
 
-        // Submit Assignment Modal Functions
-        function openSubmitModal(assignmentId) {
-            currentTaskId = assignmentId;
-            const assignment = allAssignments.find(a => a.id == assignmentId);
+        function loadStudentSubmissions() {
+            const container = document.getElementById('studentSubmissionsList');
+            container.innerHTML = '';
             
+            const submissions = Object.entries(userSubmissions);
+            
+            if (submissions.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada tugas yang dikumpulkan.</p>';
+                return;
+            }
+            
+            submissions.forEach(([assignmentId, submission]) => {
+                const assignment = allAssignments.find(a => a.id == assignmentId);
+                if (!assignment) return;
+                
+                const isLate = new Date(submission.submittedAt) > new Date(assignment.dueDate);
+                
+                const submissionDiv = document.createElement('div');
+                submissionDiv.className = `border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow ${isLate ? 'bg-yellow-50' : 'bg-white'}`;
+                submissionDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800 mb-1">${assignment.title}</h4>
+                            <p class="text-sm text-gray-600 mb-2">${assignment.subject}</p>
+                            <p class="text-sm text-gray-700">
+                                ${submission.type === 'text' ? 'Jawaban Teks' : 
+                                  submission.type === 'link' ? 'Link' : 'File Upload'}
+                            </p>
+                        </div>
+                        <div class="ml-4">
+                            ${isLate ? 
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-clock mr-1"></i>Terlambat</span>' :
+                                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check mr-1"></i>Tepat Waktu</span>'
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            Dikumpulkan: ${new Date(submission.submittedAt).toLocaleString('id-ID')}
+                        </div>
+                        <button onclick="viewSubmission(${assignmentId})" 
+                                class="bg-blue-100 hover:bg-blue-200 text-blue-600 px-3 py-1 rounded text-sm transition-colors">
+                            <i class="fas fa-eye mr-1"></i>
+                            Lihat Detail
+                        </button>
+                    </div>
+                `;
+                container.appendChild(submissionDiv);
+            });
+        }
+
+        function loadStudentProfile() {
+            const container = document.getElementById('studentProfileInfo');
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                        <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-800">
+                            ${currentUser.username}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
+                        <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-800">
+                            ${currentUser.fullName}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+                        <div class="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-800">
+                            ${currentUser.class}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <div class="px-3 py-2 bg-green-100 border border-green-300 rounded-lg text-green-800">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Aktif
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t">
+                    <h4 class="font-medium text-gray-800 mb-4">Statistik Pengumpulan</h4>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-blue-600">${allAssignments.length}</div>
+                            <div class="text-sm text-gray-600">Total Tugas</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-green-600">${Object.keys(userSubmissions).length}</div>
+                            <div class="text-sm text-gray-600">Dikumpulkan</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-red-600">${allAssignments.length - Object.keys(userSubmissions).length}</div>
+                            <div class="text-sm text-gray-600">Belum Selesai</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openSubmitModal(assignmentId) {
+            const assignment = allAssignments.find(a => a.id == assignmentId);
             if (!assignment) return;
             
-            document.getElementById('modalTaskTitle').textContent = assignment.title;
-            document.getElementById('modalTaskSubject').textContent = assignment.subject;
-            document.getElementById('modalTaskDeadline').textContent = `Deadline: ${new Date(assignment.dueDate).toLocaleDateString('id-ID')}`;
+            currentSubmitAssignmentId = assignmentId;
+            
+            document.getElementById('submitAssignmentId').value = assignmentId;
+            document.getElementById('submitAssignmentTitle').textContent = assignment.title;
+            document.getElementById('submitAssignmentSubject').textContent = assignment.subject;
+            
+            // Reset form
+            document.getElementById('submitForm').reset();
+            document.getElementById('submitAssignmentId').value = assignmentId;
+            toggleSubmissionInput();
             
             document.getElementById('submitModal').classList.remove('hidden');
         }
@@ -991,21 +1165,18 @@
         function closeSubmitModal() {
             document.getElementById('submitModal').classList.add('hidden');
             document.getElementById('submitForm').reset();
-            document.getElementById('textSubmission').classList.add('hidden');
-            document.getElementById('linkSubmission').classList.add('hidden');
-            document.getElementById('fileSubmission').classList.add('hidden');
-            currentTaskId = null;
+            currentSubmitAssignmentId = null;
         }
 
-        function toggleSubmissionFields() {
+        function toggleSubmissionInput() {
             const type = document.getElementById('submissionType').value;
             
-            // Hide all fields
+            // Hide all input types
             document.getElementById('textSubmission').classList.add('hidden');
             document.getElementById('linkSubmission').classList.add('hidden');
             document.getElementById('fileSubmission').classList.add('hidden');
             
-            // Show selected field
+            // Show selected input type
             if (type === 'text') {
                 document.getElementById('textSubmission').classList.remove('hidden');
             } else if (type === 'link') {
@@ -1019,38 +1190,42 @@
         document.getElementById('submitForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            if (!currentUser || !currentTaskId) return;
-            
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<div class="loading"></div> Mengirim...';
             submitBtn.disabled = true;
             
             try {
+                const assignmentId = document.getElementById('submitAssignmentId').value;
                 const type = document.getElementById('submissionType').value;
-                const notes = document.getElementById('submissionNotes').value;
+                const notes = document.getElementById('submissionNotes').value.trim();
+                
+                if (!type) {
+                    alert('Pilih jenis pengumpulan!');
+                    return;
+                }
                 
                 let content = '';
                 
                 if (type === 'text') {
-                    content = document.getElementById('submissionText').value;
-                    if (!content.trim()) {
-                        alert('Jawaban tidak boleh kosong!');
+                    content = document.getElementById('submissionText').value.trim();
+                    if (!content) {
+                        alert('Jawaban teks harus diisi!');
                         return;
                     }
                 } else if (type === 'link') {
-                    content = document.getElementById('submissionLink').value;
-                    if (!content.trim()) {
-                        alert('Link tidak boleh kosong!');
+                    content = document.getElementById('submissionLink').value.trim();
+                    if (!content) {
+                        alert('Link harus diisi!');
                         return;
                     }
                 } else if (type === 'file') {
-                    const file = document.getElementById('submissionFile').files[0];
-                    if (!file) {
+                    const fileInput = document.getElementById('submissionFile');
+                    if (!fileInput.files[0]) {
                         alert('Pilih file untuk diupload!');
                         return;
                     }
-                    content = file.name; // In real app, this would be uploaded to storage
+                    content = fileInput.files[0].name; // Demo: just store filename
                 }
                 
                 const submission = {
@@ -1064,27 +1239,24 @@
                 if (window.firebaseDB && connectionStatus === 'connected') {
                     try {
                         const { database, ref, set } = window.firebaseDB;
-                        await set(ref(database, `submissions/${currentUser.username}/${currentTaskId}`), submission);
+                        await set(ref(database, `submissions/${currentUser.username}/${assignmentId}`), submission);
                         console.log('✅ Submission saved to Firebase');
                     } catch (firebaseError) {
-                        console.log('⚠️ Firebase save failed, using local storage');
+                        console.log('⚠️ Firebase save failed, updating local data only');
                     }
                 }
                 
                 // Update local data
-                if (!allSubmissions[currentUser.username]) {
-                    allSubmissions[currentUser.username] = {};
-                }
-                allSubmissions[currentUser.username][currentTaskId] = submission;
+                userSubmissions[assignmentId] = submission;
                 
                 closeSubmitModal();
-                loadStudentTasks();
-                updateStudentStats();
+                loadStudentData();
                 
-                alert('Tugas berhasil dikumpulkan! 🎉');
+                const assignment = allAssignments.find(a => a.id == assignmentId);
+                alert(`Tugas "${assignment.title}" berhasil dikumpulkan!\n\nTerima kasih atas pengumpulan Anda.`);
                 
             } catch (error) {
-                console.error('Error submitting assignment:', error);
+                console.error('Submit error:', error);
                 alert('Gagal mengumpulkan tugas. Silakan coba lagi.');
             } finally {
                 submitBtn.innerHTML = originalText;
@@ -1093,57 +1265,39 @@
         });
 
         function viewSubmission(assignmentId) {
-            if (!currentUser) return;
-            
             const assignment = allAssignments.find(a => a.id == assignmentId);
-            const submission = allSubmissions[currentUser.username][assignmentId];
+            const submission = userSubmissions[assignmentId];
             
             if (!assignment || !submission) return;
             
             let content = '';
             if (submission.type === 'text') {
-                content = `Jawaban: ${submission.content}`;
+                content = `Jawaban:\n${submission.content}`;
             } else if (submission.type === 'link') {
                 content = `Link: ${submission.content}`;
             } else if (submission.type === 'file') {
                 content = `File: ${submission.content}`;
             }
             
-            alert(`Detail Pengumpulan:\n\nTugas: ${assignment.title}\nMata Pelajaran: ${assignment.subject}\n\n${content}\n\nCatatan: ${submission.notes || 'Tidak ada'}\n\nDikumpulkan: ${new Date(submission.submittedAt).toLocaleString('id-ID')}`);
-        }
-
-        function editSubmission(assignmentId) {
-            if (!currentUser) return;
+            const isLate = new Date(submission.submittedAt) > new Date(assignment.dueDate);
             
-            // Open submit modal with existing data
-            openSubmitModal(assignmentId);
-            
-            const submission = allSubmissions[currentUser.username][assignmentId];
-            if (!submission) return;
-            
-            // Pre-fill form with existing data
-            document.getElementById('submissionType').value = submission.type;
-            document.getElementById('submissionNotes').value = submission.notes || '';
-            
-            toggleSubmissionFields();
-            
-            if (submission.type === 'text') {
-                document.getElementById('submissionText').value = submission.content;
-            } else if (submission.type === 'link') {
-                document.getElementById('submissionLink').value = submission.content;
-            }
+            alert(`Detail Pengumpulan:\n\nTugas: ${assignment.title}\nMata Pelajaran: ${assignment.subject}\n\n${content}\n\nCatatan: ${submission.notes || 'Tidak ada'}\n\nDikumpulkan: ${new Date(submission.submittedAt).toLocaleString('id-ID')}\nStatus: ${isLate ? 'Terlambat' : 'Tepat Waktu'}`);
         }
 
         function logout() {
             if (confirm('Yakin ingin logout?')) {
                 currentUser = null;
-                showWelcome();
+                userSubmissions = {};
                 
-                // Clear forms
+                // Reset forms
                 document.getElementById('loginForm').reset();
                 document.getElementById('registerForm').reset();
+                
+                // Show main dashboard
+                document.getElementById('studentDashboard').classList.add('hidden');
+                document.getElementById('mainDashboard').classList.remove('hidden');
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840cd227487f853',t:'MTc1ODcwMTM4NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840f4d24237f879',t:'MTc1ODcwMzAwOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
