@@ -34,19 +34,38 @@
             connectionStatus = status;
             
             const indicators = document.querySelectorAll('.connection-status');
+            const iconIndicators = document.querySelectorAll('.connection-status-icon');
+            
             indicators.forEach(indicator => {
                 switch(status) {
                     case 'connected':
                         indicator.innerHTML = '<i class="fas fa-cloud text-green-600 mr-1"></i><span class="text-green-600 text-sm">Terhubung ke Firebase</span>';
                         break;
                     case 'connecting':
-                        indicator.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i><span class="text-yellow-600 text-sm">Menghubungkan...</span>';
+                        indicator.innerHTML = '<i class="fas fa-spinner fa-spin text-slate-500 mr-1"></i><span class="text-slate-500 text-sm">Menghubungkan...</span>';
                         break;
                     case 'offline':
                         indicator.innerHTML = '<i class="fas fa-wifi-slash text-orange-600 mr-1"></i><span class="text-orange-600 text-sm">Mode Demo</span>';
                         break;
                     case 'error':
                         indicator.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-600 text-sm">Koneksi Bermasalah</span>';
+                        break;
+                }
+            });
+            
+            iconIndicators.forEach(iconIndicator => {
+                switch(status) {
+                    case 'connected':
+                        iconIndicator.innerHTML = '<i class="fas fa-cloud text-green-500 text-lg" title="Terhubung ke Firebase"></i>';
+                        break;
+                    case 'connecting':
+                        iconIndicator.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-500 text-lg" title="Menghubungkan..."></i>';
+                        break;
+                    case 'offline':
+                        iconIndicator.innerHTML = '<i class="fas fa-wifi-slash text-orange-500 text-lg" title="Mode Demo"></i>';
+                        break;
+                    case 'error':
+                        iconIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500 text-lg" title="Koneksi Bermasalah"></i>';
                         break;
                 }
             });
@@ -320,13 +339,13 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); }
+        .gradient-bg { background: linear-gradient(135deg, #fbf7ec 0%, #c0e0f5 100%); }
         .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .animate-fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #dc2626; border-radius: 50%; animation: spin 1s linear infinite; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #64748b; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .sidebar-active { background-color: #fef2f2; color: #dc2626; border-right: 3px solid #dc2626; }
+        .sidebar-active { background-color: #f1f5f9; color: #475569; border-right: 3px solid #64748b; }
         .assignment-card { transition: all 0.3s ease; }
         .assignment-card:hover { transform: translateY(-2px); }
     </style>
@@ -342,128 +361,143 @@
 
     <!-- Login Screen -->
     <div id="loginScreen" class="hidden min-h-screen gradient-bg">
-        <div class="container mx-auto px-4 py-8">
-            <!-- Header -->
-            <div class="text-center mb-12">
-                <div class="bg-white w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 card-shadow">
-                    <i class="fas fa-graduation-cap text-red-600 text-4xl"></i>
-                </div>
-                <h1 class="text-4xl font-bold text-white mb-4">ICT Taskflow</h1>
-                <p class="text-red-100 text-lg">Sistem Manajemen Tugas Digital</p>
+        <!-- Firebase Status (Top Left) -->
+        <div class="absolute top-6 left-6 z-10">
+            <div class="connection-status bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm">
+                <i class="fas fa-spinner fa-spin text-yellow-500 mr-1"></i>
+                <span class="text-yellow-600 text-sm">Menghubungkan...</span>
             </div>
-
-            <!-- Login Tabs -->
-            <div class="max-w-md mx-auto mb-8">
-                <div class="flex bg-white bg-opacity-20 rounded-lg p-1 backdrop-blur-sm">
-                    <button id="studentTab" onclick="switchLoginTab('student')" 
-                            class="flex-1 py-2 px-4 rounded-md text-white font-medium transition-all bg-white bg-opacity-30">
-                        <i class="fas fa-user-graduate mr-2"></i>
-                        Siswa
-                    </button>
-                    <button id="adminTab" onclick="switchLoginTab('admin')" 
-                            class="flex-1 py-2 px-4 rounded-md text-white font-medium transition-all hover:bg-white hover:bg-opacity-20">
-                        <i class="fas fa-user-shield mr-2"></i>
-                        Admin
-                    </button>
-                </div>
-            </div>
-
-            <!-- Student Login -->
-            <div id="studentLogin" class="max-w-md mx-auto">
-                <div class="bg-white rounded-2xl card-shadow p-8 animate-fade-in">
-                    <div class="text-center mb-8">
-                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-user-graduate text-blue-600 text-2xl"></i>
+        </div>
+        
+        <div class="container mx-auto px-4 py-8 h-screen flex items-center">
+            <div class="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                
+                <!-- Brand Section (Left) -->
+                <div class="text-center lg:text-left">
+                    <div class="mb-8">
+                        <div class="bg-white w-32 h-32 rounded-3xl flex items-center justify-center mx-auto lg:mx-0 mb-8 card-shadow">
+                            <i class="fas fa-graduation-cap text-purple-600 text-6xl"></i>
                         </div>
-                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Login Siswa</h2>
-                        <p class="text-gray-600">Akses dashboard tugas Anda</p>
-                    </div>
-                    
-                    <form id="studentLoginForm" class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
-                            <input type="text" id="studentUsername" required 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                   placeholder="Masukkan username Anda">
+                        <h1 class="text-5xl lg:text-6xl font-bold text-slate-700 mb-6">ICT Taskflow</h1>
+                        <p class="text-slate-600 text-xl lg:text-2xl mb-8 leading-relaxed">
+                            Sistem Manajemen Tugas Digital untuk Sekolah Modern
+                        </p>
+                        <div class="space-y-4 text-slate-600">
+                            <div class="flex items-center justify-center lg:justify-start">
+                                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                                <span>Kelola tugas dengan mudah</span>
+                            </div>
+                            <div class="flex items-center justify-center lg:justify-start">
+                                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                                <span>Pantau progress siswa real-time</span>
+                            </div>
+                            <div class="flex items-center justify-center lg:justify-start">
+                                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                                <span>Interface yang user-friendly</span>
+                            </div>
                         </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                            <input type="password" id="studentPassword" required 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                   placeholder="Masukkan password Anda">
-                        </div>
-                        
-                        <button type="submit" id="studentLoginBtn"
-                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                            <i class="fas fa-sign-in-alt mr-2"></i>
-                            Masuk ke Dashboard
-                        </button>
-                    </form>
-                    
-                    <div class="mt-6 text-center">
-                        <p class="text-sm text-gray-600 mb-4">Belum punya akun?</p>
-                        <button onclick="showRegisterForm()" 
-                                class="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                            Daftar Akun Baru
-                        </button>
-                    </div>
-                    
-                    <!-- Demo Credentials -->
-                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <p class="text-sm text-gray-600 mb-2"><strong>Demo Siswa:</strong></p>
-                        <p class="text-xs text-gray-500">Username: <code>andi123</code> | Password: <code>password123</code></p>
-                        <p class="text-xs text-gray-500">Username: <code>sari456</code> | Password: <code>password123</code></p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Admin Login -->
-            <div id="adminLogin" class="hidden max-w-md mx-auto">
-                <div class="bg-white rounded-2xl card-shadow p-8 animate-fade-in">
-                    <div class="text-center mb-8">
-                        <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-user-shield text-red-600 text-2xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-bold text-gray-800 mb-2">Login Admin</h2>
-                        <p class="text-gray-600">Akses panel administrasi sistem</p>
-                    </div>
-                    
-                    <form id="adminLoginForm" class="space-y-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Username Admin</label>
-                            <input type="text" id="adminUsername" required 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                   placeholder="Masukkan username admin">
-                        </div>
+                <!-- Login Card Section (Right) -->
+                <div class="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto">
+                    <div class="bg-white rounded-3xl card-shadow p-8 animate-fade-in relative h-[620px]">
                         
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                            <input type="password" id="adminPassword" required 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
-                                   placeholder="Masukkan password admin">
-                        </div>
-                        
-                        <button type="submit" id="adminLoginBtn"
-                                class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
-                            <i class="fas fa-sign-in-alt mr-2"></i>
-                            Masuk ke Panel Admin
-                        </button>
-                    </form>
-                    
-                    <!-- Demo Credentials -->
-                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <p class="text-sm text-gray-600 mb-2"><strong>Demo Admin:</strong></p>
-                        <p class="text-xs text-gray-500">Username: <code>admin</code> | Password: <code>admin123</code></p>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Connection Status -->
-            <div class="text-center mt-8">
-                <div class="connection-status flex items-center justify-center">
-                    <i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i>
-                    <span class="text-yellow-600 text-sm">Menghubungkan...</span>
+
+                        <!-- Login Tabs -->
+                        <div class="mb-8">
+                            <div class="flex bg-gray-100 rounded-xl p-1">
+                                <button id="studentTab" onclick="switchLoginTab('student')" 
+                                        class="flex-1 py-3 px-4 rounded-lg text-slate-600 font-medium transition-all bg-white shadow-sm">
+                                    <i class="fas fa-user-graduate mr-2"></i>
+                                    Siswa
+                                </button>
+                                <button id="adminTab" onclick="switchLoginTab('admin')" 
+                                        class="flex-1 py-3 px-4 rounded-lg text-slate-600 font-medium transition-all hover:bg-white hover:shadow-sm">
+                                    <i class="fas fa-user-shield mr-2"></i>
+                                    Admin
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Student Login -->
+                        <div id="studentLogin" class="flex flex-col h-[460px]">
+                            <div class="text-center mb-6">
+                                <div class="bg-blue-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-user-graduate text-blue-600 text-2xl"></i>
+                                </div>
+                                <h2 class="text-2xl font-bold text-gray-800 mb-2">Login Siswa</h2>
+                            </div>
+                            
+                            <form id="studentLoginForm" class="space-y-4 flex-1">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                                    <input type="text" id="studentUsername" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                           placeholder="Masukkan username Anda">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                                    <input type="password" id="studentPassword" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                           placeholder="Masukkan password Anda">
+                                </div>
+                                
+                                <button type="submit" id="studentLoginBtn"
+                                        class="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-3 px-4 rounded-xl transition-colors">
+                                    <i class="fas fa-sign-in-alt mr-2"></i>
+                                    Login
+                                </button>
+                            </form>
+                            
+                            <div class="text-center pt-4">
+                                <p class="text-sm text-gray-600 mb-2">Belum punya akun?</p>
+                                <button onclick="showRegisterForm()" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                    Daftar Akun Baru
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Admin Login -->
+                        <div id="adminLogin" class="hidden flex flex-col h-[460px]">
+                            <div class="text-center mb-6">
+                                <div class="bg-purple-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-user-shield text-purple-600 text-2xl"></i>
+                                </div>
+                                <h2 class="text-2xl font-bold text-gray-800 mb-2">Login Admin</h2>
+                            </div>
+                            
+                            <form id="adminLoginForm" class="space-y-4 flex-1">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                                    <input type="text" id="adminUsername" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                           placeholder="Masukkan username admin">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                                    <input type="password" id="adminPassword" required 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                           placeholder="Masukkan password admin">
+                                </div>
+                                
+                                <button type="submit" id="adminLoginBtn"
+                                        class="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-3 px-4 rounded-xl transition-colors">
+                                    <i class="fas fa-sign-in-alt mr-2"></i>
+                                    Login
+                                </button>
+                            </form>
+                            
+                            <div class="text-center pt-4">
+                                <div class="h-12"></div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
@@ -471,6 +505,14 @@
 
     <!-- Register Form -->
     <div id="registerForm" class="hidden min-h-screen gradient-bg">
+        <!-- Firebase Status (Top Left) -->
+        <div class="absolute top-6 left-6 z-10">
+            <div class="connection-status bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm">
+                <i class="fas fa-spinner fa-spin text-yellow-500 mr-1"></i>
+                <span class="text-yellow-600 text-sm">Menghubungkan...</span>
+            </div>
+        </div>
+        
         <div class="container mx-auto px-4 py-8">
             <div class="max-w-md mx-auto">
                 <div class="bg-white rounded-2xl card-shadow p-8 animate-fade-in">
@@ -652,8 +694,8 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16">
                     <div class="flex items-center">
-                        <div class="bg-red-100 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
-                            <i class="fas fa-user-shield text-red-600"></i>
+                        <div class="bg-purple-100 w-10 h-10 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-user-shield text-purple-600"></i>
                         </div>
                         <div>
                             <h1 class="text-lg font-semibold text-gray-800">ICT Taskflow Admin</h1>
@@ -802,7 +844,7 @@
                                 <p class="text-gray-600">Buat dan kelola tugas untuk siswa</p>
                             </div>
                             <button onclick="openCreateAssignmentModal()" 
-                                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors">
                                 <i class="fas fa-plus mr-2"></i>
                                 Buat Tugas Baru
                             </button>
@@ -814,7 +856,7 @@
                             <div class="flex justify-between items-center">
                                 <h3 class="text-lg font-semibold text-gray-800">Daftar Tugas</h3>
                                 <select id="adminFilterClass" onchange="filterAdminAssignmentsByClass()" 
-                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                     <option value="">Semua Kelas</option>
                                     <option value="7A">7A</option>
                                     <option value="7B">7B</option>
@@ -846,7 +888,7 @@
                             <div class="flex justify-between items-center">
                                 <h3 class="text-lg font-semibold text-gray-800">Daftar Siswa</h3>
                                 <select id="adminFilterStudentClass" onchange="filterAdminStudentsByClass()" 
-                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                     <option value="">Semua Kelas</option>
                                     <option value="7A">7A</option>
                                     <option value="7B">7B</option>
@@ -878,7 +920,7 @@
                             <div class="flex justify-between items-center">
                                 <h3 class="text-lg font-semibold text-gray-800">Daftar Pengumpulan</h3>
                                 <select id="adminFilterSubmissionAssignment" onchange="filterAdminSubmissionsByAssignment()" 
-                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                                     <option value="">Semua Tugas</option>
                                 </select>
                             </div>
@@ -978,14 +1020,14 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Judul Tugas</label>
                     <input type="text" id="assignmentTitle" required 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                            placeholder="Masukkan judul tugas">
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Mata Pelajaran</label>
                     <select id="assignmentSubject" required 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                         <option value="">Pilih Mata Pelajaran</option>
                         <option value="Matematika">Matematika</option>
                         <option value="Bahasa Indonesia">Bahasa Indonesia</option>
@@ -1002,7 +1044,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Kelas Target</label>
                     <select id="assignmentClass" required 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                         <option value="">Pilih Kelas</option>
                         <option value="7A">7A</option>
                         <option value="7B">7B</option>
@@ -1017,14 +1059,14 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Deskripsi Tugas</label>
                     <textarea id="assignmentDescription" rows="3" required 
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                               placeholder="Jelaskan detail tugas yang harus dikerjakan..."></textarea>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tanggal Deadline</label>
                     <input type="date" id="assignmentDueDate" required 
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
                 </div>
                 
                 <div class="flex space-x-3 pt-4">
@@ -1033,7 +1075,7 @@
                         Batal
                     </button>
                     <button type="submit" id="createAssignmentBtn"
-                            class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition-colors">
+                            class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-colors">
                         <i class="fas fa-plus mr-2"></i>
                         Buat Tugas
                     </button>
@@ -1200,18 +1242,18 @@
             const adminLogin = document.getElementById('adminLogin');
             
             if (tab === 'student') {
-                studentTab.classList.add('bg-white', 'bg-opacity-30');
-                studentTab.classList.remove('hover:bg-white', 'hover:bg-opacity-20');
-                adminTab.classList.remove('bg-white', 'bg-opacity-30');
-                adminTab.classList.add('hover:bg-white', 'hover:bg-opacity-20');
+                studentTab.classList.add('bg-white', 'shadow-sm');
+                studentTab.classList.remove('hover:bg-white', 'hover:shadow-sm');
+                adminTab.classList.remove('bg-white', 'shadow-sm');
+                adminTab.classList.add('hover:bg-white', 'hover:shadow-sm');
                 
                 studentLogin.classList.remove('hidden');
                 adminLogin.classList.add('hidden');
             } else {
-                adminTab.classList.add('bg-white', 'bg-opacity-30');
-                adminTab.classList.remove('hover:bg-white', 'hover:bg-opacity-20');
-                studentTab.classList.remove('bg-white', 'bg-opacity-30');
-                studentTab.classList.add('hover:bg-white', 'hover:bg-opacity-20');
+                adminTab.classList.add('bg-white', 'shadow-sm');
+                adminTab.classList.remove('hover:bg-white', 'hover:shadow-sm');
+                studentTab.classList.remove('bg-white', 'shadow-sm');
+                studentTab.classList.add('hover:bg-white', 'hover:shadow-sm');
                 
                 adminLogin.classList.remove('hidden');
                 studentLogin.classList.add('hidden');
@@ -2204,5 +2246,5 @@
             }
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9841daad913bfd63',t:'MTc1ODcxMjQyNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9841fe93d7fc252c',t:'MTc1ODcxMzg5NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
