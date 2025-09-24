@@ -29,7 +29,7 @@
         const firebaseConfig = {
             apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
             authDomain: "ict-taskflow.firebaseapp.com",
-            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebaseddatabase.app",
+            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "ict-taskflow",
             storageBucket: "ict-taskflow.appspot.com",
             messagingSenderId: "546834422831",
@@ -45,73 +45,72 @@
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                loadSubmissions();
+                loadAndRenderData();
             } else {
-                window.location.href = "index.html"; // Pastikan ini mengarah ke index.html
+                window.location.href = "index.html";
             }
         });
 
-        function loadSubmissions() {
+        function loadAndRenderData() {
+            const usersRef = db.ref('users');
             const assignmentsRef = db.ref('assignments');
             const submissionsRef = db.ref('submissions');
-            const usersRef = db.ref('users'); // BARU: Referensi ke data pengguna
 
-            // 1. Ambil semua data pengguna sekali saja untuk dijadikan "kamus"
-            usersRef.once('value', userSnapshot => {
-                const users = userSnapshot.val();
+            // Ambil semua data dengan Promise.all untuk memastikan semuanya siap
+            Promise.all([
+                usersRef.once('value'),
+                assignmentsRef.once('value'),
+                submissionsRef.once('value')
+            ]).then((snapshots) => {
+                const users = snapshots[0].val() || {};
+                const assignments = snapshots[1].val() || {};
+                const submissions = snapshots[2].val() || {};
 
-                // 2. Ambil semua tugas
-                assignmentsRef.on('value', assignSnapshot => {
-                    const assignments = assignSnapshot.val();
-                    
-                    // 3. Ambil semua pengumpulan
-                    submissionsRef.on('value', subSnapshot => {
-                        submissionsListDiv.innerHTML = '';
-                        const submissions = subSnapshot.val();
+                renderPage(users, assignments, submissions);
 
-                        if (!assignments) {
-                            submissionsListDiv.innerHTML = '<p>Belum ada tugas yang dibuat.</p>';
-                            return;
-                        }
-
-                        // 4. Loop melalui setiap tugas
-                        for (const taskId in assignments) {
-                            const task = assignments[taskId];
-                            const taskBlock = document.createElement('div');
-                            taskBlock.classList.add('task-block');
-                            
-                            let submissionsHTML = '<h4>Belum ada yang mengumpulkan.</h4>';
-                            let foundSubmissions = [];
-
-                            if (submissions) {
-                                for (const subId in submissions) {
-                                    if (submissions[subId].assignmentId === taskId) {
-                                        foundSubmissions.push(submissions[subId]);
-                                    }
-                                }
-                            }
-
-                            if (foundSubmissions.length > 0) {
-                                submissionsHTML = '<h4>Daftar Pengumpulan:</h4>';
-                                foundSubmissions.forEach(sub => {
-                                    // BARU: Cari nama siswa menggunakan studentId
-                                    const studentName = users[sub.studentId] ? users[sub.studentId].name : 'Siswa Anonim';
-
-                                    submissionsHTML += `
-                                        <div class="submission-item">
-                                            <a href="${sub.submissionLink}" target="_blank">Lihat Tugas yang Dikumpulkan</a>
-                                            <small>Oleh: ${studentName} | Dikumpulkan pada: ${new Date(sub.submittedAt).toLocaleString()}</small>
-                                        </div>
-                                    `;
-                                });
-                            }
-                            
-                            taskBlock.innerHTML = `<h2>${task.title}</h2> ${submissionsHTML}`;
-                            submissionsListDiv.appendChild(taskBlock);
-                        }
-                    });
-                });
+                // Setelah data awal dimuat, pasang listener untuk update real-time
+                // Ini akan memanggil render ulang setiap kali ada perubahan
+                assignmentsRef.on('value', snap => renderPage(users, snap.val() || {}, submissions));
+                submissionsRef.on('value', snap => renderPage(users, assignments, snap.val() || {}));
+                
+            }).catch(error => {
+                console.error("Gagal memuat data awal:", error);
+                submissionsListDiv.innerHTML = '<p>Gagal memuat data. Periksa console untuk error.</p>';
             });
+        }
+
+        function renderPage(users, assignments, submissions) {
+            submissionsListDiv.innerHTML = '';
+            if (Object.keys(assignments).length === 0) {
+                submissionsListDiv.innerHTML = '<p>Belum ada tugas yang dibuat.</p>';
+                return;
+            }
+
+            for (const taskId in assignments) {
+                const task = assignments[taskId];
+                const taskBlock = document.createElement('div');
+                taskBlock.classList.add('task-block');
+                
+                let submissionsHTML = '<h4>Belum ada yang mengumpulkan.</h4>';
+                
+                const foundSubmissions = Object.values(submissions).filter(sub => sub.assignmentId === taskId);
+
+                if (foundSubmissions.length > 0) {
+                    submissionsHTML = '<h4>Daftar Pengumpulan:</h4>';
+                    foundSubmissions.forEach(sub => {
+                        const studentName = users[sub.studentId] ? users[sub.studentId].name : 'Siswa Anonim';
+                        submissionsHTML += `
+                            <div class="submission-item">
+                                <a href="${sub.submissionLink}" target="_blank">Lihat Tugas yang Dikumpulkan</a>
+                                <small>Oleh: ${studentName} | Dikumpulkan pada: ${new Date(sub.submittedAt).toLocaleString()}</small>
+                            </div>
+                        `;
+                    });
+                }
+                
+                taskBlock.innerHTML = `<h2>${task.title}</h2> ${submissionsHTML}`;
+                submissionsListDiv.appendChild(taskBlock);
+            }
         }
     </script>
 </body>
