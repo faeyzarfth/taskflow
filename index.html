@@ -26,30 +26,21 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <script>
-        // =================================================================
         // KONFIGURASI FIREBASE ANDA
-        // Ini harus sama persis dengan yang ada di file register.html
-        // =================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
             authDomain: "ict-taskflow.firebaseapp.com",
             databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "ict-taskflow",
-            storageBucket: "ict-taskflow.storage.app",
+            storageBucket: "ict-taskflow.appspot.com",
             messagingSenderId: "546834422831",
             appId: "1:546834422831:web:53d11b2e126d138bf1fada",
             measurementId: "G-JC52GWE4LQ"
         };
 
-        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
-        
-        // Membuat referensi ke layanan Authentication
         const auth = firebase.auth();
 
-        // =================================================================
-        // LOGIKA LOGIN
-        // =================================================================
         const loginButton = document.getElementById('loginButton');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
@@ -60,19 +51,24 @@
             const email = emailInput.value;
             const password = passwordInput.value;
 
+            // --- VALIDASI BARU DITAMBAHKAN DI SINI ---
+            if (!email || !password) {
+                alert("Harap isi email dan password Anda.");
+                return; // Hentikan eksekusi jika salah satu kolom kosong
+            }
+            // -----------------------------------------
+
             console.log("Mencoba login dengan email:", email);
 
-            // Fungsi inti dari Firebase untuk login pengguna yang sudah ada
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // Berhasil!
                     console.log("Login Berhasil!", userCredential.user);
                     alert("Selamat datang kembali!");
                     // Di aplikasi nyata, di sinilah Anda akan mengarahkan pengguna ke halaman dashboard
-                    // window.location.href = "dashboard.html";
+                    // Untuk sekarang kita biarkan di sini agar bisa melihat log.
+                    // Anda bisa menambahkan link ke halaman lain secara manual.
                 })
                 .catch((error) => {
-                    // Gagal, tampilkan pesan error
                     console.error("Login Gagal:", error.message);
                     alert("Error: " + error.message);
                 });
