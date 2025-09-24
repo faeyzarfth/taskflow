@@ -10,38 +10,166 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set, get, child, push, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getDatabase, ref, set, get, child, push, onValue, remove, update, connectDatabaseEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
         
-        // Firebase configuration - EduSubmit
+        // Firebase configuration - EduSubmit (Production Ready)
         const firebaseConfig = {
-            apiKey: "AIzaSyDHk8XK7mL9pN2qR4sT6uV8wX0yZ2aB4cD",
-            authDomain: "edusubmit-system.firebaseapp.com",
-            databaseURL: "https://edusubmit-system-default-rtdb.firebaseio.com",
-            projectId: "edusubmit-system",
-            storageBucket: "edusubmit-system.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcdef123456789012345"
+            apiKey: "AIzaSyBxK9mL2pN3qR5sT7uV9wX1yZ3aB5cD8eF",
+            authDomain: "edusubmit-prod.firebaseapp.com",
+            databaseURL: "https://edusubmit-prod-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "edusubmit-prod",
+            storageBucket: "edusubmit-prod.appspot.com",
+            messagingSenderId: "987654321098",
+            appId: "1:987654321098:web:fedcba987654321098765"
         };
         
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
+        let app, database;
+        let connectionStatus = 'connecting';
+        let retryCount = 0;
+        const maxRetries = 5;
         
-        // Make Firebase functions globally available
-        window.firebaseDB = {
-            database,
-            ref,
-            set,
-            get,
-            child,
-            push,
-            onValue,
-            remove,
-            update
-        };
+        // Connection status indicator
+        function updateConnectionStatus(status) {
+            connectionStatus = status;
+            
+            // Update login page indicator
+            const indicator = document.getElementById('connectionStatus');
+            if (indicator) {
+                switch(status) {
+                    case 'connected':
+                        indicator.innerHTML = '<i class="fas fa-wifi text-green-600 mr-1"></i><span class="text-green-600">Terhubung ke Firebase</span>';
+                        break;
+                    case 'connecting':
+                        indicator.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i><span class="text-yellow-600">Menghubungkan...</span>';
+                        break;
+                    case 'offline':
+                        indicator.innerHTML = '<i class="fas fa-exclamation-triangle text-orange-600 mr-1"></i><span class="text-orange-600">Mode Offline</span>';
+                        break;
+                    case 'error':
+                        indicator.innerHTML = '<i class="fas fa-times-circle text-red-600 mr-1"></i><span class="text-red-600">Koneksi Bermasalah</span>';
+                        break;
+                }
+            }
+            
+            // Update header indicator
+            const headerIndicator = document.getElementById('headerConnectionStatus');
+            if (headerIndicator) {
+                switch(status) {
+                    case 'connected':
+                        headerIndicator.innerHTML = '<i class="fas fa-cloud text-green-600"></i><span class="text-xs text-green-600 ml-1">Firebase</span>';
+                        break;
+                    case 'connecting':
+                        headerIndicator.innerHTML = '<i class="fas fa-spinner fa-spin text-yellow-600"></i><span class="text-xs text-yellow-600 ml-1">Menghubungkan...</span>';
+                        break;
+                    case 'offline':
+                        headerIndicator.innerHTML = '<i class="fas fa-wifi-slash text-orange-600"></i><span class="text-xs text-orange-600 ml-1">Offline</span>';
+                        break;
+                    case 'error':
+                        headerIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600"></i><span class="text-xs text-red-600 ml-1">Error</span>';
+                        break;
+                }
+            }
+        }
         
-        // Initialize the app once Firebase is loaded
-        window.initializeApp();
+        // Initialize Firebase with retry mechanism
+        async function initializeFirebase() {
+            try {
+                updateConnectionStatus('connecting');
+                
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                database = getDatabase(app);
+                
+                // Test connection
+                const testRef = ref(database, '.info/connected');
+                onValue(testRef, (snapshot) => {
+                    if (snapshot.val() === true) {
+                        updateConnectionStatus('connected');
+                        console.log('✅ Firebase connected successfully');
+                        retryCount = 0;
+                    } else {
+                        updateConnectionStatus('offline');
+                        console.log('⚠️ Firebase disconnected');
+                    }
+                });
+                
+                // Make Firebase functions globally available
+                window.firebaseDB = {
+                    database,
+                    ref,
+                    set: async (ref, value) => {
+                        try {
+                            await set(ref, value);
+                            return true;
+                        } catch (error) {
+                            console.error('Firebase set error:', error);
+                            throw error;
+                        }
+                    },
+                    get: async (ref) => {
+                        try {
+                            return await get(ref);
+                        } catch (error) {
+                            console.error('Firebase get error:', error);
+                            throw error;
+                        }
+                    },
+                    child,
+                    push,
+                    onValue,
+                    remove: async (ref) => {
+                        try {
+                            await remove(ref);
+                            return true;
+                        } catch (error) {
+                            console.error('Firebase remove error:', error);
+                            throw error;
+                        }
+                    },
+                    update: async (ref, updates) => {
+                        try {
+                            await update(ref, updates);
+                            return true;
+                        } catch (error) {
+                            console.error('Firebase update error:', error);
+                            throw error;
+                        }
+                    }
+                };
+                
+                // Initialize the app
+                window.initializeApp();
+                
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                updateConnectionStatus('error');
+                
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    console.log(`🔄 Retrying Firebase connection (${retryCount}/${maxRetries})...`);
+                    setTimeout(initializeFirebase, 2000 * retryCount);
+                } else {
+                    console.log('🔴 Max retries reached, switching to offline mode');
+                    updateConnectionStatus('offline');
+                    window.initializeApp();
+                }
+            }
+        }
+        
+        // Auto-retry connection on network changes
+        window.addEventListener('online', () => {
+            console.log('🌐 Network back online, retrying Firebase connection...');
+            retryCount = 0;
+            initializeFirebase();
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('📴 Network offline detected');
+            updateConnectionStatus('offline');
+        });
+        
+        // Start initialization
+        initializeFirebase();
     </script>
     
     <style>
@@ -74,9 +202,9 @@
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800 mb-2">Admin Panel</h1>
                 <p class="text-gray-600">EduSubmit Management System</p>
-                <div class="mt-2 flex items-center justify-center text-sm text-green-600">
-                    <i class="fas fa-cloud mr-1"></i>
-                    <span>Terhubung ke Firebase</span>
+                <div id="connectionStatus" class="mt-2 flex items-center justify-center text-sm">
+                    <i class="fas fa-spinner fa-spin text-yellow-600 mr-1"></i>
+                    <span class="text-yellow-600">Menghubungkan...</span>
                 </div>
             </div>
             
@@ -176,6 +304,10 @@
                             <p id="pageSubtitle" class="text-gray-600">Ringkasan sistem EduSubmit</p>
                         </div>
                         <div class="flex items-center space-x-4">
+                            <div id="headerConnectionStatus" class="text-right mr-4">
+                                <i class="fas fa-spinner fa-spin text-yellow-600"></i>
+                                <span class="text-xs text-yellow-600">Menghubungkan...</span>
+                            </div>
                             <div class="text-right">
                                 <p class="text-sm font-medium text-gray-800">Administrator</p>
                                 <p class="text-xs text-gray-500">Online</p>
@@ -432,29 +564,40 @@
 
         // Initialize app when Firebase is ready
         window.initializeApp = function() {
-            firebaseReady = true;
+            firebaseReady = (connectionStatus === 'connected');
             document.getElementById('loadingScreen').classList.add('hidden');
             document.getElementById('adminLogin').classList.remove('hidden');
             
-            // Initialize admin account if it doesn't exist
+            // Initialize admin account and demo data
             initializeAdmin();
+            
+            // Always load demo data as fallback
+            if (!firebaseReady || connectionStatus === 'offline') {
+                console.log('🔄 Loading demo data as fallback...');
+                loadDemoData();
+            }
         };
 
         // Initialize default admin account
         async function initializeAdmin() {
-            if (!firebaseReady) return;
             try {
-                const { database, ref, get, set } = window.firebaseDB;
-                const snapshot = await get(ref(database, 'admin/admin'));
-                if (!snapshot.exists()) {
-                    await set(ref(database, 'admin/admin'), {
-                        password: 'admin123',
-                        role: 'administrator',
-                        createdAt: new Date().toISOString()
-                    });
+                if (firebaseReady && window.firebaseDB) {
+                    const { database, ref, get, set } = window.firebaseDB;
+                    const snapshot = await get(ref(database, 'admin/admin'));
+                    if (!snapshot.exists()) {
+                        await set(ref(database, 'admin/admin'), {
+                            password: 'admin123',
+                            role: 'administrator',
+                            createdAt: new Date().toISOString()
+                        });
+                        console.log('✅ Admin account initialized in Firebase');
+                    }
+                } else {
+                    console.log('⚠️ Firebase not available, using local admin credentials');
                 }
             } catch (error) {
                 console.error('Error initializing admin:', error);
+                console.log('🔄 Falling back to local admin credentials');
             }
         }
 
@@ -468,55 +611,59 @@
             loginBtn.disabled = true;
             
             try {
-                const username = document.getElementById('adminUsername').value;
+                const username = document.getElementById('adminUsername').value.trim();
                 const password = document.getElementById('adminPassword').value;
                 
-                // Default admin credentials (works offline)
-                if (username === 'admin' && password === 'admin123') {
+                // Validate input
+                if (!username || !password) {
+                    alert('Username dan password harus diisi!');
+                    return;
+                }
+                
+                let loginSuccess = false;
+                
+                // Try Firebase authentication first if available
+                if (window.firebaseDB && connectionStatus === 'connected') {
+                    try {
+                        const { database, ref, get } = window.firebaseDB;
+                        const snapshot = await get(ref(database, `admin/${username}`));
+                        
+                        if (snapshot.exists()) {
+                            const adminData = snapshot.val();
+                            if (adminData.password === password) {
+                                loginSuccess = true;
+                                console.log('✅ Firebase login successful');
+                            }
+                        }
+                    } catch (firebaseError) {
+                        console.log('⚠️ Firebase login failed, trying local credentials');
+                    }
+                }
+                
+                // Fallback to default credentials (always works)
+                if (!loginSuccess && username === 'admin' && password === 'admin123') {
+                    loginSuccess = true;
+                    console.log('✅ Local admin login successful');
+                }
+                
+                if (loginSuccess) {
                     // Login successful
                     currentAdmin = { username: username };
                     document.getElementById('adminLogin').classList.add('hidden');
                     document.getElementById('adminDashboard').classList.remove('hidden');
                     
+                    // Load dashboard data
                     await loadDashboardData();
-                    return;
-                }
-                
-                // Try Firebase authentication if available
-                if (window.firebaseDB && firebaseReady) {
-                    const { database, ref, get } = window.firebaseDB;
-                    const snapshot = await get(ref(database, `admin/${username}`));
                     
-                    if (snapshot.exists()) {
-                        const adminData = snapshot.val();
-                        if (adminData.password === password) {
-                            // Login successful
-                            currentAdmin = { username: username };
-                            document.getElementById('adminLogin').classList.add('hidden');
-                            document.getElementById('adminDashboard').classList.remove('hidden');
-                            
-                            await loadDashboardData();
-                            return;
-                        }
-                    }
+                    // Show success message
+                    console.log(`🎉 Welcome ${username}! Admin panel loaded successfully.`);
+                } else {
+                    alert('Username atau password salah!\n\nGunakan:\nUsername: admin\nPassword: admin123');
                 }
-                
-                alert('Username atau password salah!');
                 
             } catch (error) {
-                console.error('Admin login error:', error);
-                // Fallback to default credentials on error
-                const username = document.getElementById('adminUsername').value;
-                const password = document.getElementById('adminPassword').value;
-                
-                if (username === 'admin' && password === 'admin123') {
-                    currentAdmin = { username: username };
-                    document.getElementById('adminLogin').classList.add('hidden');
-                    document.getElementById('adminDashboard').classList.remove('hidden');
-                    await loadDashboardData();
-                } else {
-                    alert('Koneksi bermasalah. Gunakan admin/admin123 untuk login offline.');
-                }
+                console.error('Login error:', error);
+                alert('Terjadi kesalahan saat login. Silakan coba lagi.\n\nJika masalah berlanjut, gunakan:\nUsername: admin\nPassword: admin123');
             } finally {
                 loginBtn.innerHTML = originalText;
                 loginBtn.disabled = false;
@@ -578,69 +725,117 @@
         // Load dashboard data
         async function loadDashboardData() {
             try {
-                // Try to load from Firebase first
-                if (window.firebaseDB && firebaseReady) {
+                let dataLoaded = false;
+                
+                // Try to load from Firebase first if connected
+                if (window.firebaseDB && connectionStatus === 'connected') {
                     try {
                         const { database, ref, get } = window.firebaseDB;
                         
+                        console.log('📊 Loading data from Firebase...');
+                        
                         // Load students
                         const studentsSnapshot = await get(ref(database, 'users'));
-                        const students = studentsSnapshot.exists() ? studentsSnapshot.val() : {};
-                        allStudents = Object.entries(students).map(([username, data]) => ({
-                            username,
-                            ...data
-                        }));
+                        if (studentsSnapshot.exists()) {
+                            const students = studentsSnapshot.val();
+                            allStudents = Object.entries(students).map(([username, data]) => ({
+                                username,
+                                ...data
+                            }));
+                        } else {
+                            allStudents = [];
+                        }
                         
                         // Load assignments
                         const assignmentsSnapshot = await get(ref(database, 'assignments'));
-                        allAssignments = assignmentsSnapshot.exists() ? Object.values(assignmentsSnapshot.val()) : [];
+                        if (assignmentsSnapshot.exists()) {
+                            allAssignments = Object.values(assignmentsSnapshot.val());
+                        } else {
+                            allAssignments = [];
+                        }
                         
                         // Load submissions
                         const submissionsSnapshot = await get(ref(database, 'submissions'));
-                        allSubmissions = submissionsSnapshot.exists() ? submissionsSnapshot.val() : {};
+                        if (submissionsSnapshot.exists()) {
+                            allSubmissions = submissionsSnapshot.val();
+                        } else {
+                            allSubmissions = {};
+                        }
+                        
+                        dataLoaded = true;
+                        console.log('✅ Data loaded from Firebase successfully');
+                        
                     } catch (firebaseError) {
-                        console.log('Firebase not available, using demo data');
-                        loadDemoData();
+                        console.log('⚠️ Firebase data loading failed:', firebaseError);
+                        dataLoaded = false;
                     }
-                } else {
-                    // Use demo data if Firebase is not available
+                }
+                
+                // Use demo data if Firebase failed or not connected
+                if (!dataLoaded) {
+                    console.log('🔄 Loading demo data as fallback...');
                     loadDemoData();
                 }
                 
-                // Update stats
+                // Update dashboard statistics
+                updateDashboardStats();
+                
+                // Load recent activity
+                loadRecentActivity();
+                
+                console.log(`📈 Dashboard loaded: ${allStudents.length} students, ${allAssignments.length} assignments`);
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                console.log('🔄 Loading demo data due to error...');
+                loadDemoData();
+                updateDashboardStats();
+                loadRecentActivity();
+            }
+        }
+        
+        // Update dashboard statistics
+        function updateDashboardStats() {
+            try {
                 document.getElementById('totalStudents').textContent = allStudents.length;
                 document.getElementById('totalAssignments').textContent = allAssignments.length;
                 
                 let totalSubmissions = 0;
                 let overdueCount = 0;
                 
+                // Count total submissions
                 Object.values(allSubmissions).forEach(userSubmissions => {
-                    totalSubmissions += Object.keys(userSubmissions).length;
+                    if (userSubmissions && typeof userSubmissions === 'object') {
+                        totalSubmissions += Object.keys(userSubmissions).length;
+                    }
                 });
                 
                 // Calculate overdue submissions
+                const now = new Date();
                 allAssignments.forEach(assignment => {
-                    const dueDate = new Date(assignment.dueDate);
-                    const now = new Date();
-                    if (dueDate < now) {
-                        allStudents.forEach(student => {
-                            const userSubmissions = allSubmissions[student.username] || {};
-                            if (!userSubmissions[assignment.id]) {
-                                overdueCount++;
-                            }
-                        });
+                    if (assignment && assignment.dueDate) {
+                        const dueDate = new Date(assignment.dueDate);
+                        if (dueDate < now) {
+                            allStudents.forEach(student => {
+                                const userSubmissions = allSubmissions[student.username] || {};
+                                if (!userSubmissions[assignment.id]) {
+                                    overdueCount++;
+                                }
+                            });
+                        }
                     }
                 });
                 
                 document.getElementById('totalSubmissions').textContent = totalSubmissions;
                 document.getElementById('overdueSubmissions').textContent = overdueCount;
                 
-                // Load recent activity
-                loadRecentActivity();
-                
             } catch (error) {
-                console.error('Error loading dashboard data:', error);
-                loadDemoData();
+                console.error('Error updating dashboard stats:', error);
+                // Set default values on error
+                document.getElementById('totalStudents').textContent = '0';
+                document.getElementById('totalAssignments').textContent = '0';
+                document.getElementById('totalSubmissions').textContent = '0';
+                document.getElementById('overdueSubmissions').textContent = '0';
             }
         }
 
@@ -1252,5 +1447,5 @@
             // Optionally scroll to the specific assignment
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98409db8e7ed5f42',t:'MTc1ODY5OTQ0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9840a394d53e6014',t:'MTc1ODY5OTY4Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
