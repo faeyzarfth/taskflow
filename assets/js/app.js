@@ -4,19 +4,19 @@ const db = firebase.database();
 
 // Membuat aplikasi Vue
 const app = Vue.createApp({
-    // --- DATA ---
-    // Di sinilah semua data reaktif aplikasi disimpan
     data() {
         return {
-            currentView: 'loading', // Tampilan yang sedang aktif
-            user: null, // Data pengguna yang login
+            currentView: 'loading',
+            user: null,
             loginForm: { email: '', password: '' },
-            registerForm: { name: '', email: '', password: '', role: '' }
+            registerForm: { name: '', email: '', password: '', role: '' },
+            assignments: {},
+            submissions: {},
+            users: {}
         };
     },
-    // --- METHODS ---
-    // Di sinilah semua fungsi/logika aplikasi ditempatkan
     methods: {
+        // ... (Fungsi handleLogin, handleRegister, handleLogout tetap sama)
         handleLogin() {
             auth.signInWithEmailAndPassword(this.loginForm.email, this.loginForm.password)
                 .catch(error => alert("Login Gagal: " + error.message));
@@ -30,7 +30,7 @@ const app = Vue.createApp({
                 .then(cred => db.ref('users/' + cred.user.uid).set({ name: form.name, email: form.email, role: form.role }))
                 .then(() => {
                     alert("Registrasi berhasil! Silakan login.");
-                    this.currentView = 'login'; // Pindahkan ke halaman login
+                    this.currentView = 'login';
                 })
                 .catch(error => alert("Registrasi Gagal: " + error.message));
         },
@@ -38,19 +38,16 @@ const app = Vue.createApp({
             auth.signOut();
         }
     },
-    // --- LIFECYCLE HOOK ---
-    // Kode di sini akan berjalan saat aplikasi Vue siap
     mounted() {
         auth.onAuthStateChanged(user => {
+            this.currentView = 'loading';
             if (user) {
-                // Pengguna Login
                 db.ref('users/' + user.uid).once('value', snapshot => {
                     this.user = {
                         uid: user.uid,
                         email: user.email,
                         profile: snapshot.val()
                     };
-                    // Arahkan ke dasbor yang sesuai
                     if (this.user.profile.role === 'Guru') {
                         this.currentView = 'teacherDashboard';
                     } else {
@@ -58,7 +55,6 @@ const app = Vue.createApp({
                     }
                 });
             } else {
-                // Pengguna Logout
                 this.user = null;
                 this.currentView = 'login';
             }
@@ -66,5 +62,6 @@ const app = Vue.createApp({
     }
 });
 
-// Menghubungkan aplikasi Vue ke elemen #app di HTML
+// Pindahkan template HTML ke dalam #app di index.html
+// dan mount aplikasi Vue ke elemen #app
 app.mount('#app');

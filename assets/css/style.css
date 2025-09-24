@@ -1,57 +1,41 @@
-/* Gaya Dasar */
-body { 
-    font-family: sans-serif; 
-    background-color: #f4f4f9; 
-    margin: 0;
+/*
+ * File: style.css
+ * Deskripsi: File CSS kustom untuk ICT Taskflow
+ * Ini berisi penyesuaian kecil di atas Bootstrap.
+ */
+
+/* Memberikan warna latar belakang yang lembut untuk seluruh halaman */
+body {
+    background-color: #f8f9fa; /* Warna abu-abu sangat terang dari Bootstrap */
 }
 
-/* Header Aplikasi */
-.app-header {
-    background-color: #007bff;
-    color: white;
-    padding: 1rem 2rem;
+/* Mengatur agar aplikasi mengisi seluruh tinggi layar, penting untuk layout SPA */
+#app {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.app-header h1 {
-    margin: 0;
-    font-size: 1.5rem;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
-/* Konten Utama */
-main {
-    padding: 2rem;
+/* Mengatur agar area konten utama (main) bisa mengisi ruang yang tersisa */
+main.flex-grow-1 {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: center; /* Memusatkan konten secara vertikal */
+    align-items: center; /* Memusatkan konten secara horizontal */
 }
 
-/* Gaya untuk form (Login, Register, dll) */
-.container { 
-    width: 350px;
-    padding: 2rem; 
-    background: white; 
-    border-radius: 8px; 
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+/* Membatasi lebar maksimum dari form login dan registrasi agar tidak terlalu lebar di layar besar */
+.auth-card {
+    width: 100%;
+    max-width: 450px;
 }
-input, select, textarea { 
-    display: block; 
-    margin-bottom: 1rem; 
-    padding: 0.7rem; 
-    width: 95%; 
-    border: 1px solid #ccc;
-    border-radius: 4px;
+
+/* Memberikan efek hover yang halus pada item tugas di dasbor */
+.list-group-item {
+    transition: box-shadow .2s ease-in-out, transform .2s ease-in-out;
 }
-button { 
-    padding: 0.8rem; 
-    width: 100%; 
-    border: none; 
-    color: white; 
-    cursor: pointer; 
-    border-radius: 4px; 
-    background-color: #007bff;
-}
-button:hover { 
-    background-color: #0056b3; 
+
+.list-group-item:hover {
+    transform: translateY(-3px); /* Sedikit mengangkat kartu saat di-hover */
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15); /* Memberi bayangan yang lebih jelas */
 }
