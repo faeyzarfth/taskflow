@@ -1,0 +1,57 @@
+/* Gaya Dasar */
+body { 
+    font-family: sans-serif; 
+    background-color: #f4f4f9; 
+    margin: 0;
+}
+
+/* Header Aplikasi */
+.app-header {
+    background-color: #007bff;
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.app-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+/* Konten Utama */
+main {
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+/* Gaya untuk form (Login, Register, dll) */
+.container { 
+    width: 350px;
+    padding: 2rem; 
+    background: white; 
+    border-radius: 8px; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+}
+input, select, textarea { 
+    display: block; 
+    margin-bottom: 1rem; 
+    padding: 0.7rem; 
+    width: 95%; 
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+button { 
+    padding: 0.8rem; 
+    width: 100%; 
+    border: none; 
+    color: white; 
+    cursor: pointer; 
+    border-radius: 4px; 
+    background-color: #007bff;
+}
+button:hover { 
+    background-color: #0056b3; 
+}

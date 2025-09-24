@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICT Taskflow</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+    <header class="app-header">
+        <h1>ICT Taskflow</h1>
+        <nav id="app-nav">
+            </nav>
+    </header>
+
+    <main id="app-content">
+        </main>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <script>
+        // Konfigurasi Firebase (tetap di sini)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvrReO-C31hWc0w3OniTjJ-s0N0n9cPy8",
+            authDomain: "ict-taskflow.firebaseapp.com",
+            databaseURL: "https://ict-taskflow-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ict-taskflow",
+            storageBucket: "ict-taskflow.appspot.com",
+            messagingSenderId: "546834422831",
+            appId: "1:546834422831:web:53d11b2e126d138bf1fada",
+            measurementId: "G-JC52GWE4LQ"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    
+    <script src="assets/js/app.js" defer></script>
+
+</body>
+</html>
