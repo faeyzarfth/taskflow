@@ -1,41 +1,22 @@
-/*
- * File: style.css
- * Deskripsi: File CSS kustom untuk ICT Taskflow
- * Ini berisi penyesuaian kecil di atas Bootstrap.
- */
-
-/* Memberikan warna latar belakang yang lembut untuk seluruh halaman */
+/* Global Styles */
 body {
-    background-color: #f8f9fa; /* Warna abu-abu sangat terang dari Bootstrap */
+    background-color: #f8f9fa;
 }
 
-/* Mengatur agar aplikasi mengisi seluruh tinggi layar, penting untuk layout SPA */
-#app {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
+[v-cloak] {
+    display: none;
 }
 
-/* Mengatur agar area konten utama (main) bisa mengisi ruang yang tersisa */
-main.flex-grow-1 {
-    display: flex;
-    flex-direction: column;
-    justify-content: center; /* Memusatkan konten secara vertikal */
-    align-items: center; /* Memusatkan konten secara horizontal */
-}
-
-/* Membatasi lebar maksimum dari form login dan registrasi agar tidak terlalu lebar di layar besar */
-.auth-card {
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    max-width: 450px;
-}
-
-/* Memberikan efek hover yang halus pada item tugas di dasbor */
-.list-group-item {
-    transition: box-shadow .2s ease-in-out, transform .2s ease-in-out;
-}
-
-.list-group-item:hover {
-    transform: translateY(-3px); /* Sedikit mengangkat kartu saat di-hover */
-    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15); /* Memberi bayangan yang lebih jelas */
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
 }
